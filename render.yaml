@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: search-destroy-3v3
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
