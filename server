@@ -1,3 +1,4 @@
+```js
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -5,91 +6,344 @@ const WebSocket = require('ws');
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
+
+const MAX_PLAYERS = 6;
+const TEAM_SIZE = 3;
+
 const rooms = new Map();
+
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-function code() {
+function generateRoomCode() {
   let s = '';
-  do { s = Array.from({length:5}, () => ALPHABET[Math.floor(Math.random()*ALPHABET.length)]).join(''); }
-  while (rooms.has(s));
+
+  do {
+    s = Array.from(
+      { length: 5 },
+      () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]
+    ).join('');
+  } while (rooms.has(s));
+
   return s;
 }
-function send(ws, obj) { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
-function broadcast(room, obj, except) {
-  for (const p of room.players.values()) if (p.ws !== except) send(p.ws, obj);
+
+function generateId(prefix = 'player') {
+  return `${prefix}_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
 }
+
+function send(ws, obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(obj));
+  }
+}
+
+function broadcast(room, obj, exceptWs = null) {
+  for (const player of room.players.values()) {
+    if (player.ws !== exceptWs) {
+      send(player.ws, obj);
+    }
+  }
+}
+
+function getTeamForSlot(slot) {
+  return slot < TEAM_SIZE ? 0 : 1;
+}
+
+function getPlayersArray(room) {
+  return [...room.players.values()]
+    .sort((a, b) => a.slot - b.slot)
+    .map(player => ({
+      id: player.id,
+      slot: player.slot,
+      name: player.name,
+      team: player.team,
+      host: player.host,
+      bot: player.bot
+    }));
+}
+
 function roomState(room) {
-  return [...room.players.values()].sort((a,b)=>a.slot-b.slot).map(p=>({id:p.id,slot:p.slot,name:p.name,team:p.team,host:p.host}));
+  return getPlayersArray(room);
 }
+
 function sendLobby(room) {
-  broadcast(room, {type:'lobby', code:room.code, host:room.hostId, players:roomState(room), started:room.started});
+  broadcast(room, {
+    type: 'lobby',
+    code: room.code,
+    host: room.hostId,
+    players: roomState(room),
+    started: room.started,
+    maxPlayers: MAX_PLAYERS,
+    teamSize: TEAM_SIZE
+  });
 }
-function freeSlot(room) {
-  for (let i=0;i<4;i++) if (![...room.players.values()].some(p=>p.slot===i)) return i;
+
+function getFreeSlot(room) {
+  for (let slot = 0; slot < MAX_PLAYERS; slot++) {
+    const occupied = [...room.players.values()].some(
+      player => player.slot === slot
+    );
+
+    if (!occupied) {
+      return slot;
+    }
+  }
+
   return -1;
 }
-function closePlayer(room, p) {
-  room.players.delete(p.id);
-  if (room.hostId === p.id) {
-    room.hostId = room.players.size ? [...room.players.values()][0].id : null;
-    for (const q of room.players.values()) q.host = q.id === room.hostId;
-    if (room.hostId) send(room.players.get(room.hostId).ws, {type:'host_changed'});
-  }
-  if (!room.players.size) rooms.delete(room.code); else sendLobby(room);
+
+function getTeamPlayerCount(room, team) {
+  return [...room.players.values()].filter(
+    player => player.team === team
+  ).length;
 }
 
-const server = http.createServer((req,res)=>{
-  let u = decodeURIComponent((req.url||'/').split('?')[0]);
-  if (u === '/') u = '/index.html';
-  const file = path.join(ROOT, u);
-  if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-    res.writeHead(404); return res.end('Not found');
+/*
+ * Ajoute automatiquement des bots jusqu'à avoir 3 joueurs
+ * dans chaque équipe.
+ *
+ * Les bots n'ont pas de WebSocket.
+ * Ils seront pilotés par le client hôte dans la simulation.
+ */
+function fillBots(room) {
+  if (room.started) return;
+
+  for (let team = 0; team < 2; team++) {
+    while (getTeamPlayerCount(room, team) < TEAM_SIZE) {
+      const slot = [...Array(MAX_PLAYERS).keys()]
+        .filter(s => getTeamForSlot(s) === team)
+        .find(s => ![...room.players.values()].some(p => p.slot === s));
+
+      if (slot === undefined) {
+        break;
+      }
+
+      const bot = {
+        id: generateId('bot'),
+        ws: null,
+        room,
+        slot,
+        name: `Bot ${team + 1}-${getTeamPlayerCount(room, team) + 1}`,
+        team,
+        host: false,
+        bot: true
+      };
+
+      room.players.set(bot.id, bot);
+    }
   }
-  const ext = path.extname(file);
-  const types = {'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json'};
-  res.writeHead(200, {'Content-Type':types[ext]||'application/octet-stream','Cache-Control':'no-store'});
-  fs.createReadStream(file).pipe(res);
+}
+
+function removeBots(room) {
+  for (const [id, player] of room.players) {
+    if (player.bot) {
+      room.players.delete(id);
+    }
+  }
+}
+
+function closePlayer(room, player) {
+  if (!room || !player) return;
+
+  room.players.delete(player.id);
+
+  /*
+   * Si l'hôte quitte, on cherche un autre vrai joueur.
+   * Un bot ne peut jamais devenir hôte.
+   */
+  if (room.hostId === player.id) {
+    const newHost = [...room.players.values()].find(
+      p => !p.bot && p.ws
+    );
+
+    room.hostId = newHost ? newHost.id : null;
+
+    for (const p of room.players.values()) {
+      p.host = p.id === room.hostId;
+    }
+
+    if (newHost) {
+      send(newHost.ws, {
+        type: 'host_changed',
+        host: newHost.id
+      });
+    }
+  }
+
+  if (room.players.size === 0) {
+    rooms.delete(room.code);
+    return;
+  }
+
+  /*
+   * Avant le lancement, on retire les anciens bots afin
+   * que de vrais joueurs puissent prendre leur place.
+   */
+  if (!room.started) {
+    removeBots(room);
+  }
+
+  sendLobby(room);
+}
+
+/*
+ * HTTP
+ */
+const server = http.createServer((req, res) => {
+  let url = decodeURIComponent(
+    (req.url || '/').split('?')[0]
+  );
+
+  if (url === '/') {
+    url = '/index.html';
+  }
+
+  const file = path.join(ROOT, url);
+
+  /*
+   * Protection contre les chemins qui sortent du dossier du jeu.
+   */
+  const normalizedRoot = path.resolve(ROOT);
+  const normalizedFile = path.resolve(file);
+
+  if (
+    !normalizedFile.startsWith(normalizedRoot + path.sep) &&
+    normalizedFile !== normalizedRoot
+  ) {
+    res.writeHead(403);
+    return res.end('Forbidden');
+  }
+
+  if (
+    !fs.existsSync(normalizedFile) ||
+    fs.statSync(normalizedFile).isDirectory()
+  ) {
+    res.writeHead(404);
+    return res.end('Not found');
+  }
+
+  const ext = path.extname(normalizedFile);
+
+  const contentTypes = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml'
+  };
+
+  res.writeHead(200, {
+    'Content-Type':
+      contentTypes[ext] || 'application/octet-stream',
+    'Cache-Control': 'no-store'
+  });
+
+  fs.createReadStream(normalizedFile).pipe(res);
 });
 
-const wss = new WebSocket.Server({server});
+/*
+ * WebSocket
+ */
+const wss = new WebSocket.Server({ server });
+
 wss.on('connection', ws => {
-  const client = {ws,id:Math.random().toString(36).slice(2),room:null,slot:-1,name:'Joueur'};
+  const client = {
+    ws,
+    id: generateId(),
+    room: null,
+    slot: -1,
+    name: 'Joueur',
+    team: -1,
+    host: false,
+    bot: false
+  };
+
   ws.on('message', raw => {
-    let m; try { m=JSON.parse(raw); } catch { return; }
-    if (m.type === 'create') {
-      if (client.room) return;
-      const c=code(), room={code:c,hostId:client.id,players:new Map(),started:false};
-      rooms.set(c,room); client.room=room;client.slot=0;client.name=String(m.name||'Hôte').slice(0,18);
-      client.team=0;client.host=true;room.players.set(client.id,client);
-      send(ws,{type:'created',code:c,id:client.id,slot:0,team:0,host:true});sendLobby(room);return;
-    }
-    if (m.type === 'join') {
-      if (client.room) return;
-      const c=String(m.code||'').trim().toUpperCase(),room=rooms.get(c);
-      if (!room) return send(ws,{type:'error',message:'Partie introuvable.'});
-      if (room.started) return send(ws,{type:'error',message:'La partie a déjà commencé.'});
-      const slot=freeSlot(room); if(slot<0)return send(ws,{type:'error',message:'Partie complète.'});
-      client.room=room;client.slot=slot;client.name=String(m.name||'Joueur').slice(0,18);client.team=slot<2?0:1;client.host=false;room.players.set(client.id,client);
-      send(ws,{type:'joined',code:c,id:client.id,slot,team:client.team,host:false});sendLobby(room);return;
-    }
-    const room=client.room;if(!room)return;
-    if (m.type === 'start') {
-      if(client.id!==room.hostId)return;
-      room.started=true; broadcast(room,{type:'start',players:roomState(room)}); return;
-    }
-    if (m.type === 'input') {
-      if(client.id!==room.hostId && room.started) {
-        const host=room.players.get(room.hostId); if(host) send(host.ws,{type:'remote_input',slot:client.slot,input:m.input||{}});
-      }
+    let message;
+
+    try {
+      message = JSON.parse(raw);
+    } catch {
+      send(ws, {
+        type: 'error',
+        message: 'Message réseau invalide.'
+      });
       return;
     }
-    if (m.type === 'state') {
-      if(client.id!==room.hostId || !room.started)return;
-      broadcast(room,{type:'state',state:m.state}); return;
-    }
-    if (m.type === 'leave') { closePlayer(room,client); client.room=null; }
-  });
-  ws.on('close',()=>{if(client.room)closePlayer(client.room,client);});
-});
 
-server.listen(PORT,()=>console.log(`Search & Destroy server listening on http://localhost:${PORT}`));
+    /*
+     * CRÉATION D'UNE PARTIE
+     */
+    if (message.type === 'create') {
+      if (client.room) {
+        return;
+      }
+
+      const roomCode = generateRoomCode();
+
+      const room = {
+        code: roomCode,
+        hostId: client.id,
+        players: new Map(),
+        started: false
+      };
+
+      rooms.set(roomCode, room);
+
+      client.room = room;
+      client.slot = 0;
+      client.name = String(message.name || 'Hôte')
+        .trim()
+        .slice(0, 18) || 'Hôte';
+
+      client.team = getTeamForSlot(client.slot);
+      client.host = true;
+      client.bot = false;
+
+      room.players.set(client.id, client);
+
+      send(ws, {
+        type: 'created',
+        code: roomCode,
+        id: client.id,
+        slot: client.slot,
+        team: client.team,
+        host: true,
+        bot: false,
+        maxPlayers: MAX_PLAYERS,
+        teamSize: TEAM_SIZE
+      });
+
+      sendLobby(room);
+
+      return;
+    }
+
+    /*
+     * REJOINDRE UNE PARTIE
+     */
+    if (message.type === 'join') {
+      if (client.room) {
+        return;
+      }
+
+      const roomCode = String(message.code || '')
+        .trim()
+        .toUpperCase();
+
+      const room = rooms.get(roomCode);
+
+      if (!room) {
+        send(ws, {
+          type: 'error',
+          message: 'Partie introuvable.'
+        });
+        return;
+      }
+
+      if (ro
+```
