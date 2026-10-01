@@ -562,7 +562,7 @@ $('leaveBtn').onclick=()=>{sendNet({type:'leave'});try{netSocket&&netSocket.clos
 let AC=null,NBs=[],WS=null;
 function audioInit(){try{if(AC){if(AC.state==='suspended')AC.resume();return}
 AC=new(window.AudioContext||window.webkitAudioContext)();const sr=AC.sampleRate,comp=AC.createDynamicsCompressor();comp.threshold.value=-18;comp.ratio.value=6;comp.connect(AC.destination);
-const MG=AC.createGain();MG.gain.value=.34;MG.connect(comp);
+const MG=AC.createGain();MG.gain.value=.2;MG.connect(comp);
 WS=AC.createWaveShaper();const cu=new Float32Array(256);for(let i=0;i<256;i++)cu[i]=Math.tanh((i/128-1)*2.2);WS.curve=cu;WS.connect(MG);
 const cvr=AC.createConvolver(),n2=sr*.7|0,ib=AC.createBuffer(2,n2,sr);for(let c=0;c<2;c++){const d=ib.getChannelData(c);for(let i=0;i<n2;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n2,2.5)}cvr.buffer=ib;const rg=AC.createGain();rg.gain.value=.3;WS.connect(rg);rg.connect(cvr);cvr.connect(MG);
 for(let k=0;k<3;k++){const n=sr*.3|0,b=AC.createBuffer(1,n,sr),d=b.getChannelData(0);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(sr*(.03+k*.012)));NBs.push(b)}}catch(x){}}
