@@ -345,5 +345,239 @@ wss.on('connection', ws => {
         return;
       }
 
-      if (ro
+      if (room.started) {
+        send(ws, {
+          type: 'error',
+          message: 'La partie a déjà commencé.'
+        });
+        return;
+      }
+
+      /*
+       * Les bots occupaient temporairement les places.
+       * On les enlève avant de chercher une place réelle.
+       */
+      removeBots(room);
+
+      const slot = getFreeSlot(room);
+
+      if (slot < 0) {
+        send(ws, {
+          type: 'error',
+          message: 'Partie complète. Maximum 6 joueurs.'
+        });
+        return;
+      }
+
+      client.room = room;
+      client.slot = slot;
+
+      client.name =
+        String(message.name || 'Joueur')
+          .trim()
+          .slice(0, 18) || 'Joueur';
+
+      client.team = getTeamForSlot(slot);
+      client.host = false;
+      client.bot = false;
+
+      room.players.set(client.id, client);
+
+      send(ws, {
+        type: 'joined',
+        code: roomCode,
+        id: client.id,
+        slot,
+        team: client.team,
+        host: false,
+        bot: false,
+        maxPlayers: MAX_PLAYERS,
+        teamSize: TEAM_SIZE
+      });
+
+      sendLobby(room);
+
+      return;
+    }
+
+    const room = client.room;
+
+    if (!room) {
+      return;
+    }
+
+    /*
+     * LANCER LA PARTIE
+     */
+    if (message.type === 'start') {
+      if (client.id !== room.hostId) {
+        return;
+      }
+
+      if (room.started) {
+        return;
+      }
+
+      /*
+       * On remplit automatiquement les places restantes
+       * avec des bots.
+       *
+       * Exemple :
+       * 1 joueur  -> 1 joueur + 2 bots VS 3 bots
+       * 2 joueurs -> 2 joueurs + 1 bot VS 3 bots
+       * 3 joueurs -> 3 joueurs VS 3 bots
+       */
+      fillBots(room);
+
+      room.started = true;
+
+      const players = roomState(room);
+
+      broadcast(room, {
+        type: 'start',
+        players,
+        maxPlayers: MAX_PLAYERS,
+        teamSize: TEAM_SIZE
+      });
+
+      /*
+       * Le host reçoit explicitement la liste complète.
+       * Les bots n'ont pas de WebSocket.
+       */
+      const host = room.players.get(room.hostId);
+
+      if (host) {
+        send(host.ws, {
+          type: 'bots',
+          bots: players.filter(player => player.bot)
+        });
+      }
+
+      return;
+    }
+
+    /*
+     * INPUT D'UN JOUEUR DISTANT
+     */
+    if (message.type === 'input') {
+      if (!room.started) {
+        return;
+      }
+
+      /*
+       * Un bot ne peut pas envoyer d'input.
+       */
+      if (client.bot) {
+        return;
+      }
+
+      /*
+       * L'hôte fait actuellement tourner la simulation.
+       * Les autres joueurs envoient leurs inputs à l'hôte.
+       */
+      if (client.id !== room.hostId) {
+        const host = room.players.get(room.hostId);
+
+        if (host && host.ws) {
+          send(host.ws, {
+            type: 'remote_input',
+            slot: client.slot,
+            input:
+              message.input &&
+              typeof message.input === 'object'
+                ? message.input
+                : {}
+          });
+        }
+      }
+
+      return;
+    }
+
+    /*
+     * ÉTAT DE LA PARTIE
+     */
+    if (message.type === 'state') {
+      if (!room.started) {
+        return;
+      }
+
+      if (client.id !== room.hostId) {
+        return;
+      }
+
+      /*
+       * Diffusion de l'état aux joueurs humains.
+       * Les bots n'ont pas besoin de recevoir leur propre état
+       * via WebSocket.
+       */
+      broadcast(room, {
+        type: 'state',
+        state: message.state
+      });
+
+      return;
+    }
+
+    /*
+     * INFORMATIONS SUR LES BOTS
+     *
+     * Le client hôte peut demander à nouveau la liste
+     * des bots si nécessaire.
+     */
+    if (message.type === 'get_bots') {
+      if (client.id !== room.hostId) {
+        return;
+      }
+
+      send(ws, {
+        type: 'bots',
+        bots: roomState(room).filter(player => player.bot)
+      });
+
+      return;
+    }
+
+    /*
+     * QUITTER LA PARTIE
+     */
+    if (message.type === 'leave') {
+      closePlayer(room, client);
+      client.room = null;
+      client.slot = -1;
+      return;
+    }
+  });
+
+  ws.on('close', () => {
+    if (client.room) {
+      const room = client.room;
+
+      closePlayer(room, client);
+
+      client.room = null;
+      client.slot = -1;
+    }
+  });
+
+  ws.on('error', () => {
+    if (client.room) {
+      const room = client.room;
+
+      closePlayer(room, client);
+
+      client.room = null;
+      client.slot = -1;
+    }
+  });
+});
+
+/*
+ * Démarrage
+ */
+server.listen(PORT, () => {
+  console.log(
+    `Search & Destroy server listening on http://localhost:${PORT}`
+  );
+});
 ```
