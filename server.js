@@ -9,7 +9,8 @@ const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
 const INDEX = path.join(__dirname, 'index.html');
-const SLOTS = [0, 1, 2, 3, 4, 5];          // 0-2 : bleus, 3-5 : rouges
+// taille d'equipe selon la carte : 3 (nuit, 3v3) ou 4 (desert, 4v4)
+const MAP_SIZE = { nuit: 3, desert: 4 };
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const rooms = new Map();                   // code -> salon
 
@@ -39,17 +40,18 @@ const newCode = () => {
 const newId = () => Math.random().toString(36).slice(2, 10);
 const cleanName = n => String(n || 'Joueur').replace(/[<>&"']/g, '').trim().slice(0, 14) || 'Joueur';
 const send = (ws, o) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
-const teamOf = slot => (slot < 3 ? 0 : 1);
-const publicPlayers = room => room.players.map(p => ({ id: p.id, name: p.name, slot: p.slot, team: teamOf(p.slot), host: p.id === room.hostId }));
-const lobby = room => room.players.forEach(p => send(p.ws, { type: 'lobby', code: room.code, players: publicPlayers(room) }));
+const teamOf = (room, slot) => (slot < room.size ? 0 : 1);
+const publicPlayers = room => room.players.map(p => ({ id: p.id, name: p.name, slot: p.slot, team: teamOf(room, p.slot), host: p.id === room.hostId }));
+const lobby = room => room.players.forEach(p => send(p.ws, { type: 'lobby', code: room.code, map: room.map, size: room.size, players: publicPlayers(room) }));
 
 // première place libre : par défaut on rejoint l'équipe de l'hôte (jouer entre amis contre l'IA),
 // le bouton « changer d'équipe » permet ensuite de passer en face
 function freeSlot(room, preferTeam) {
   const used = new Set(room.players.map(p => p.slot));
   const host = room.players.find(p => p.id === room.hostId);
-  const team = preferTeam !== undefined ? preferTeam : (host ? teamOf(host.slot) : 0);
-  const order = team === 0 ? [0, 1, 2, 3, 4, 5] : [3, 4, 5, 0, 1, 2];
+  const team = preferTeam !== undefined ? preferTeam : (host ? teamOf(room, host.slot) : 0);
+  const n = room.size, all = [...Array(2 * n).keys()];
+  const order = team === 0 ? all : all.slice(n).concat(all.slice(0, n));
   return order.find(s => !used.has(s));
 }
 
@@ -95,11 +97,12 @@ wss.on('connection', ws => {
       case 'create': {
         if (room) return;
         const code = newCode(), id = newId();
-        const r = { code, hostId: id, started: false, players: [] };
+        const map = MAP_SIZE[m.map] ? m.map : 'nuit';
+        const r = { code, hostId: id, started: false, players: [], map, size: MAP_SIZE[map] };
         r.players.push({ id, ws, name: cleanName(m.name), slot: 0 });
         rooms.set(code, r);
         ws.room = r;
-        send(ws, { type: 'created', code, id, slot: 0, host: true });
+        send(ws, { type: 'created', code, id, slot: 0, host: true, map: r.map, size: r.size });
         return lobby(r);
       }
 
@@ -109,11 +112,11 @@ wss.on('connection', ws => {
         if (!r) return send(ws, { type: 'error', message: 'Aucune partie avec ce code.' });
         if (r.started) return send(ws, { type: 'error', message: 'La partie a déjà commencé.' });
         const slot = freeSlot(r);
-        if (slot === undefined) return send(ws, { type: 'error', message: 'La partie est pleine (6 joueurs).' });
+        if (slot === undefined) return send(ws, { type: 'error', message: 'La partie est pleine (' + (2 * r.size) + ' joueurs).' });
         const id = newId();
         r.players.push({ id, ws, name: cleanName(m.name), slot });
         ws.room = r;
-        send(ws, { type: 'joined', code: r.code, id, slot, host: false });
+        send(ws, { type: 'joined', code: r.code, id, slot, host: false, map: r.map, size: r.size });
         return lobby(r);
       }
 
@@ -121,8 +124,8 @@ wss.on('connection', ws => {
         if (!room || room.started) return;
         const p = room.players.find(x => x.ws === ws);
         if (!p) return;
-        const slot = freeSlot(room, 1 - teamOf(p.slot));
-        if (slot === undefined || teamOf(slot) === teamOf(p.slot)) return;
+        const slot = freeSlot(room, 1 - teamOf(room, p.slot));
+        if (slot === undefined || teamOf(room, slot) === teamOf(room, p.slot)) return;
         p.slot = slot;
         return lobby(room);
       }
@@ -133,7 +136,7 @@ wss.on('connection', ws => {
         if (!p || p.id !== room.hostId) return;
         room.started = true;
         const players = publicPlayers(room);
-        return room.players.forEach(x => send(x.ws, { type: 'start', players }));
+        return room.players.forEach(x => send(x.ws, { type: 'start', players, map: room.map, size: room.size }));
       }
 
       case 'input': {                       // invité -> hôte
