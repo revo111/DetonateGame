@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>Search & Destroy 3D</title>
+<title>Detonate</title>
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 :root{box-sizing:border-box}
@@ -15,7 +15,7 @@ canvas{position:fixed;left:0;top:0}#h{pointer-events:none}
 
 #menu{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:linear-gradient(rgba(5,9,18,.78),rgba(5,9,18,.92));font-family:system-ui,sans-serif;color:#fff}
 #menu .panel{width:min(92vw,460px);padding:28px;border:1px solid #ffffff25;border-radius:18px;background:#101827ee;box-shadow:0 20px 80px #0008;text-align:center}
-#menu h1{margin:0 0 6px;font-size:34px;letter-spacing:2px}#menu .sub{opacity:.65;margin-bottom:24px}
+#menu h1{margin:0 0 6px;font-size:40px;letter-spacing:6px}#menu .sub{opacity:.65;margin-bottom:24px}
 .menuBtn{display:block;width:100%;padding:15px;margin:10px 0;border:1px solid #ffffff22;border-radius:11px;background:#1a2639;color:#fff;font:700 16px system-ui;cursor:pointer}.menuBtn:hover{background:#24344d}
 .menuInput{box-sizing:border-box;width:100%;padding:14px;border-radius:10px;border:1px solid #ffffff25;background:#0a1020;color:#fff;font:700 18px system-ui;text-align:center;text-transform:uppercase;margin:7px 0}
 #roomCode{font-size:32px;letter-spacing:7px;font-weight:900;margin:12px 0 20px}#players{margin:18px 0;text-align:left}.player{padding:9px 12px;margin:5px 0;border-radius:8px;background:#ffffff08}.blue{border-left:4px solid #4d8dff}.bo{border-left:4px solid #d8dde3;background:#1d1f2299!important}.vp{border-left:4px solid #9fc25a;background:#5a6b2e44!important}.red{border-left:4px solid #ff4d5c}.small{font-size:12px;opacity:.6}.danger{color:#ff7c7c}.ok{color:#76e59a}
@@ -25,7 +25,7 @@ canvas{position:fixed;left:0;top:0}#h{pointer-events:none}
 #fsTip{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:86vw;background:#0b1220ee;color:#fff;font:500 13px system-ui;padding:10px 14px;border-radius:10px;z-index:56;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
 </style></head><body>
 <div id="menu"><div class="panel">
-<h1>SEARCH &amp; DESTROY</h1><div class="sub">3D Tactical Shooter</div>
+<h1>DETONATE</h1><div class="sub">3D Tactical Shooter</div>
 <div id="mapPick"><div class="small" style="margin-bottom:6px">CARTE</div><div class="mapRow"><button class="mapBtn sel" data-map="nuit">🌙 NUIT</button><button class="mapBtn" data-map="desert">🏜️ DÉSERT</button></div></div><div id="mainMenu"><button class="menuBtn" id="aiBtn">🤖 CONTRE L'IA</button><button class="menuBtn" id="privateBtn">🌐 PARTIE PRIVÉE</button></div>
 <div id="privateMenu" class="hidden"><input id="nameInput" class="menuInput" maxlength="14" placeholder="TON PSEUDO"><button class="menuBtn" id="createBtn">CRÉER UNE PARTIE</button><input id="codeInput" class="menuInput" maxlength="5" placeholder="CODE DE LA PARTIE"><button class="menuBtn" id="joinBtn">REJOINDRE</button><button class="menuBtn" id="backBtn">← RETOUR</button></div>
 <div id="lobby" class="hidden"><div class="small">CODE DE LA PARTIE</div><div id="roomCode">-----</div><button class="menuBtn" id="copyBtn">COPIER LE CODE</button><div id="players"></div><div id="menuMsg"></div><button class="menuBtn secondary" id="teamBtn">CHANGER D’ÉQUIPE</button><button class="menuBtn hidden" id="startBtn">LANCER LA PARTIE</button><button class="menuBtn" id="leaveBtn">QUITTER</button></div>
@@ -1532,7 +1532,7 @@ let boostSeen=0,boostNotif=-1,boostRound=0;
 function drawBoostNotif(hm){if(!hm)return;if(round!==boostRound){boostRound=round;boostSeen=hm.boost?1:0}
  if(hm.boost&&!boostSeen){boostSeen=1;boostNotif=performance.now();boostSnd()}if(!hm.boost)boostSeen=0;
  if(boostNotif<0)return;const t=(performance.now()-boostNotif)/1000;if(t>4.6){boostNotif=-1;return}
- const a=t<.3?t/.3:(t>4?Math.max(0,(4.6-t)/.6):1),sc=t<.3?.85+.15*(t/.3):1,bw=Math.min(W-30,360),bh=96,cx=W/2,cy=Math.min(H*.38,H/2-40);
+ const a=t<.3?t/.3:(t>4?Math.max(0,(4.6-t)/.6):1),sc=t<.3?.85+.15*(t/.3):1,bw=Math.min(W-30,360),bh=96,cx=W/2,cy=H-82-bh/2;   // en bas de l'ecran, juste au-dessus des munitions et de la vie
  g.save();g.globalAlpha=a;g.translate(cx,cy);g.scale(sc,sc);
  pill(-bw/2,-bh/2,bw,bh,14,'rgba(8,12,22,.88)');g.lineWidth=2;g.strokeStyle='#e0402f';g.beginPath();g.roundRect?g.roundRect(-bw/2+1,-bh/2+1,bw-2,bh-2,14):g.rect(-bw/2,-bh/2,bw,bh);g.stroke();
  icoFlag(-bw/2+30,-bh/2+26,11);txt('BOOST DU DRAPEAU OBTENU',-bw/2+50,-bh/2+26,15,'#ffd9a0','left',800);
