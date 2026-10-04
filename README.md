@@ -1,4 +1,4 @@
-# Search & Destroy 3D
+# Detonate
 
 Jeu de tir tactique en vue du dessus, jouable dans le navigateur (PC et mobile).
 
