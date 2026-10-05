@@ -44,6 +44,7 @@ function createGame(map, players, broadcast) {
   netPlayers=__players;sendNet=o=>__out(o);
   loadMap(__map);NM=Array.from({length:2*TS},(_,i)=>slotName(i));
   netInputs={};cRound=0;round=0;score=[0,0];HEAT=[0,0,0];PRES=[0,0,0];newRound();
+  if(__fast)setTimeout(()=>{score=[7,4];st.s='end'},__fast);   // uniquement pour les tests automatiques (variable DETONATE_FAST_END)
   return {
     step:dt=>upd(dt),
     snapshot:()=>netSnapshot(),
@@ -52,11 +53,11 @@ function createGame(map, players, broadcast) {
     state:()=>st.s
   }`;
   const fn = new Function('THREE', 'document', 'window', 'location', 'innerWidth', 'innerHeight', 'devicePixelRatio',
-    'addEventListener', 'requestAnimationFrame', 'navigator', 'localStorage', '__players', '__map', '__out', code);
+    'addEventListener', 'requestAnimationFrame', 'navigator', 'localStorage', '__players', '__map', '__out', '__fast', code);
   const g = fn(THREE, documentStub, {}, { search: '', protocol: 'http:', host: 'serveur', hostname: 'serveur' }, 1280, 720, 1,
     () => {}, () => 0, { userAgent: 'serveur', maxTouchPoints: 0 }, { getItem: () => null, setItem() {} },
     players.map(p => ({ slot: p.slot, name: p.name, id: p.id })), map,
-    o => { if (o && o.type === 'state') broadcast(o); });
+    o => { if (o && o.type === 'state') broadcast(o); }, +(process.env.DETONATE_FAST_END || 0));
   return g;
 }
 
