@@ -82,7 +82,7 @@ function startGame(room) {
     const now = Date.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
     try { room.game.step(dt); } catch (e) { console.error('Erreur de simulation :', e); }
     if (now - lastSend >= 48) { lastSend = now; try { sendAll({ type: 'state', state: room.game.snapshot() }); } catch (e) {} }
-    if (room.game.state() === 'end') { endAt = endAt || now; if (now - endAt > 120000) { stopGame(room); rooms.delete(room.code); } }
+    if (room.game.state() === 'end') { endAt = endAt || now; if (now - endAt > 600000) { stopGame(room); rooms.delete(room.code); } /* salon gardé 10 min après la fin (pour recommencer) */ }
   }, 16);
 }
 function stopGame(room) { if (room.timer) clearInterval(room.timer); room.timer = null; room.game = null; }
@@ -166,6 +166,22 @@ wss.on('connection', ws => {
         const msg = JSON.stringify({ type: 'state', state: m.state });
         room.players.forEach(x => { if (x !== p && x.ws.readyState === 1) x.ws.send(msg); });
         return;
+      }
+
+      case 'rematch': {                     // fin de partie : « Recommencer » (même salon, mêmes joueurs, pas de nouveau code)
+        if (!room || !room.started || !room.game || room.game.state() !== 'end') return;
+        const p = room.players.find(x => x.ws === ws);
+        if (!p) return;
+        p.ready = true;
+        if (p.id === room.hostId) {                       // le chef du salon relance pour tout le monde
+          stopGame(room);
+          room.players.forEach(x => { x.ready = false; });
+          const players = publicPlayers(room);
+          room.players.forEach(x => send(x.ws, { type: 'start', players, map: room.map, size: room.size, server: true }));
+          return startGame(room);
+        }
+        const ids = room.players.filter(x => x.ready).map(x => x.id);
+        return room.players.forEach(x => send(x.ws, { type: 'ready', ids }));
       }
 
       case 'leave':
