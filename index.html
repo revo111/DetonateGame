@@ -1347,11 +1347,12 @@ function netMessage(m){
  if(m.type==='error')return menuMessage(m.message,'danger');
  if(m.type==='created'||m.type==='joined'){if(m.map)netMap=m.map;if(m.size)netSize=m.size;netMode=true;isHost=!!m.host;netRoomCode=m.code;netPlayerId=m.id;localSlot=m.slot;menuShow('lobby');$('roomCode').textContent=m.code;menuMessage('Partage ce code à tes amis.');return}
  if(m.type==='lobby'){if(m.map)netMap=m.map;if(m.size)netSize=m.size;netPlayers=m.players||[];netRoomCode=m.code||netRoomCode;const me=netPlayers.find(p=>p.id===netPlayerId);if(me){localSlot=me.slot;isHost=!!me.host}renderLobby();return}
- if(m.type==='start'){loadMap(m.map||(isHost?mapChoice:netMap));netStarted=true;netPlayers=m.players||netPlayers;NM=Array.from({length:2*TS},(_,i)=>slotName(i));menu.classList.add('hidden');netInputs={};cRound=0;round=0;score=[0,0];HEAT=[0,0,0];PRES=[0,0,0];newRound();return}
+ if(m.type==='start'){if(m.server)isHost=false;   // la partie est calculee par le serveur : tout le monde (createur du salon compris) est un simple joueur
+ loadMap(m.map||netMap||mapChoice);netStarted=true;netPlayers=m.players||netPlayers;NM=Array.from({length:2*TS},(_,i)=>slotName(i));menu.classList.add('hidden');netInputs={};cRound=0;round=0;score=[0,0];HEAT=[0,0,0];PRES=[0,0,0];newRound();return}
  if(m.type==='remote_input'){netInputs[m.slot]=m.input||{};const e_=E&&E[m.slot];if(e_&&m.input&&m.input.q){if(m.input.dx!==undefined)(e_.mq||(e_.mq=[])).push([m.input.q,m.input.dx,m.input.dy]);else e_.ack=m.input.q}return}
  if(m.type==='state'){if(netStarted&&!isHost)applyNetState(m.state);return}
  if(m.type==='peer_left'){netPlayers=netPlayers.filter(p=>p.slot!==m.slot);if(netStarted){NM[m.slot]='IA';if(isHost&&E&&E[m.slot]){E[m.slot].p=0;E[m.slot].tk=0;delete netInputs[m.slot]}}else renderLobby();return}
- if(m.type==='closed'){netBanner("L'hôte a quitté la partie — retour au menu…",3500);return}
+ if(m.type==='closed'){netBanner("La partie s'est arrêtée — retour au menu…",3500);return}
 }
 function renderLobby(){
  $('roomCode').textContent=netRoomCode;
