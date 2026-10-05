@@ -1386,6 +1386,7 @@ function netSnapshot(){const r=v=>Math.round(v*10)/10;return{map:MAPID,T:r(T),ro
 function netClientTick(dt){
  xfx(dt);
  localInpC=input();if(localInpC.rel)relPend=1;const li=localInpC,k=1-Math.exp(-dt*16);
+ {const me=E[localSlot];cliCd-=dt;if(me&&me.alive&&st.s==='live'&&li.fire&&cliCd<=0&&me.ammo>0&&!(me.rl>0)){cliCd=.2/(me.boost?1.3:1);predictHit(me.x+Math.cos(aimAng)*14,me.y+Math.sin(aimAng)*14,aimAng,me.team)}}
  for(const e of E){if(e.tx===undefined)continue;const ox=e.x,oy=e.y;e.fT-=dt;
   if(e.id===localSlot&&e.alive&&st.s==='live'){let mx=li.mx,my=li.my;if(e.act&&e.can){mx=my=0}const len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len}mv(e,mx*190*(e.boost?1.3:1)*dt,my*190*(e.boost?1.3:1)*dt);
    const ex=e.tx-e.x,ey=e.ty-e.y;if(Math.hypot(ex,ey)>90){e.x=e.tx;e.y=e.ty}else{e.x+=ex*.1;e.y+=ey*.1}e.ang=aimAng}
@@ -1557,7 +1558,7 @@ if(e.nudge>0){e.nudge-=dt;mx=e.nx;my=e.ny}{const ox=e.x,oy=e.y;mv(e,mx*sp*dt,my*
    e.nx=best[0];e.ny=best[1];e.dx=best[0];e.dy=best[1];e.tk=0;e.tag=''}}else e.stk=0}e.ph+=Math.min(1,len)*dt*9;e.mvn=len;
 e.cd-=dt;if(e.rl>0){e.rl-=dt;if(e.rl<=0){e.rl=0;e.ammo=30}}else if((e.p&&(e.id===localSlot?localInp:(netInputs[e.id]||{})).rel&&e.ammo<30)||(!e.p&&!tgt&&e.ammo<14))e.rl=e.p?2:2.3;
 if(fire&&e.cd<=0&&e.rl<=0&&e.ammo>0){const m=BP.find(q=>!q.visible);if(m){e.ammo--;if(e.ammo<=0)e.rl=e.p?2:2.3;e.cd=(e.p?.2:.3)/(e.boost?1.3:1);e.fT=.06;const a=e.ang+(e.p?0:(Math.random()-.5)*.12);m.visible=true;
-shot(Math.max(.15,1-Math.hypot(e.x-CP.x,e.y-CP.y)/1100));B.push({x:e.x+Math.cos(a)*14,y:e.y+Math.sin(a)*14,vx:Math.cos(a)*960,vy:Math.sin(a)*960,t:.9,team:e.team,id:e.id,u:++bseq,m});
+shot(Math.max(.15,1-Math.hypot(e.x-CP.x,e.y-CP.y)/1100));B.push({x:e.x+Math.cos(a)*14,y:e.y+Math.sin(a)*14,vx:Math.cos(a)*960,vy:Math.sin(a)*960,t:.9,team:e.team,id:e.id,u:++bseq,m});if(e.id===localSlot&&e.p)predictHit(e.x+Math.cos(a)*14,e.y+Math.sin(a)*14,a,e.team);
 for(const f of foes)if(Math.hypot(f.x-e.x,f.y-e.y)<750)K[f.team][e.id]={x:e.x,y:e.y,t:T,hear:1}}}
 }
 for(const b of B){for(let i=0;i<6&&b.t>0;i++){b.x+=b.vx*dt/6;b.y+=b.vy*dt/6;if(hit(b.x,b.y,0,1)){b.t=0;break}
@@ -1688,8 +1689,12 @@ function drawBoostNotif(hm){if(!hm)return;if(round!==boostRound){boostRound=roun
  g.restore()}
 function boostSnd(){if(!AC||!WS)return;const t=AC.currentTime;[523,659,784,1047].forEach((f,i)=>{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.value=f;gn.gain.setValueAtTime(0,t+i*.08);gn.gain.linearRampToValueAtTime(.18,t+i*.08+.02);gn.gain.exponentialRampToValueAtTime(.001,t+i*.08+.35);o.connect(gn);gn.connect(WS);o.start(t+i*.08);o.stop(t+i*.08+.4)})}
 function wscr(x,y,h){const v=new THREE.Vector3(x,h||20,y).project(cam);return[(v.x+1)/2*W,(1-v.y)/2*H]}
+const PRED={};let cliCd=0;
+function predictHit(sx,sy,a,team){const dx=Math.cos(a),dy=Math.sin(a),R=960*.9;let best=null,bt=1e9;
+ for(const e of E){if(!e.alive||e.team===team)continue;const ox=e.x-sx,oy=e.y-sy,tc=ox*dx+oy*dy;if(tc<0||tc>R)continue;const d2=ox*ox+oy*oy-tc*tc;if(d2>144)continue;const t=tc-Math.sqrt(144-d2);if(t<bt){bt=t;best=e}}
+ if(!best||!los({x:sx,y:sy},{x:sx+dx*bt,y:sy+dy*bt}))return;const now=performance.now();PRED[best.id]=now;HITM.push({x:best.x,y:best.y,t0:now,kill:0})}
 function drawHitFx(hm){const now=performance.now();
- for(const q of HITEV){if(q.u<=lastHitU)continue;lastHitU=q.u;if(q.k===localSlot&&q.v!==localSlot){HITM.push({x:q.x,y:q.y,t0:now,kill:q.kill})}if(q.v===localSlot)DMGI.push({sx:q.sx,sy:q.sy,t0:now})}
+ for(const q of HITEV){if(q.u<=lastHitU)continue;lastHitU=q.u;if(q.k===localSlot&&q.v!==localSlot){const pr=PRED[q.v]&&now-PRED[q.v]<900;if(!pr||q.kill)HITM.push({x:q.x,y:q.y,t0:now,kill:q.kill});if(pr&&!q.kill)PRED[q.v]=0}if(q.v===localSlot)DMGI.push({sx:q.sx,sy:q.sy,t0:now})}
  // marqueur de touche sur l'ennemi touche (rouge et plus grand si elimination)
  HITM=HITM.filter(m=>now-m.t0<(m.kill?650:380));for(const m of HITM){const[x,y]=wscr(m.x,m.y,22);if(!isFinite(x))continue;const f=(now-m.t0)/(m.kill?650:380),r=(m.kill?9:6)*(1+f*.35);
   g.save();g.globalAlpha=1-f;g.strokeStyle=m.kill?'#ff4a3a':'#ffffff';g.lineWidth=m.kill?2.4:1.8;g.beginPath();for(const[a,b]of[[1,1],[1,-1],[-1,1],[-1,-1]]){g.moveTo(x+a*r*.45,y+b*r*.45);g.lineTo(x+a*r,y+b*r)}g.stroke();g.restore()}
