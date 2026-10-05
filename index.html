@@ -1112,11 +1112,13 @@ const GFX=[...Array(6)].map(()=>{const mk_=(geo,c,o)=>{const m=new THREE.Mesh(ge
  return{f:mk_(new THREE.CircleGeometry(1,28),0xffb050,{blending:THREE.AdditiveBlending}),r:mk_(new THREE.RingGeometry(.86,1,40),0xfff0c0),sm:mk_(new THREE.CircleGeometry(1,24),0x3a3530),
   sc:mk_(new THREE.CircleGeometry(1,24),0x1a1410),fb,sp,puffs,t:99}});
 function hurt(e,dmg,kid,isG,sx,sy){if(!e.alive)return;e.hp-=dmg;e.rev=3;const src=E[kid];if(sx===undefined&&src){sx=src.x;sy=src.y}
- const ev_={u:++hitSeq,t:T,k:kid,v:e.id,x:e.x,y:e.y,sx:sx??e.x,sy:sy??e.y,kill:e.hp<=0?1:0};HITEV.push(ev_);if(HITEV.length>40)HITEV.shift();
- if(netMode&&isHost&&((src&&src.p&&kid!==localSlot)||(e.p&&e.id!==localSlot)))sendNet({type:'state',state:{hitOnly:1,hv:[[ev_.u,ev_.k,ev_.v,Math.round(ev_.x),Math.round(ev_.y),Math.round(ev_.sx),Math.round(ev_.sy),ev_.kill]]}});
+ const ev_={u:++hitSeq,t:T,k:kid,v:e.id,x:e.x,y:e.y,sx:sx??e.x,sy:sy??e.y,kill:e.hp<=0?1:0,g:isG?1:0};HITEV.push(ev_);if(HITEV.length>40)HITEV.shift();
+ if(netMode&&isHost&&((src&&src.p&&kid!==localSlot)||(e.p&&e.id!==localSlot)))sendNet({type:'state',state:{hitOnly:1,hv:[[ev_.u,ev_.k,ev_.v,Math.round(ev_.x),Math.round(ev_.y),Math.round(ev_.sx),Math.round(ev_.sy),ev_.kill,ev_.g]]}});
  if(!netMode||isHost)drawHitFxEvents();if(e.hp<=0){stat(e.id).d++;if(src&&src.team!==e.team)stat(kid).k++}if(e.hp<=0){e.alive=0;e.body=e.team==0||netMode||T-e.vt<.7;KL.push({k:kid,v:e.id,t:T,g:isG?1:0});
  E.forEach(m=>{m.tk=0;if(m.chase&&Math.hypot(m.chase.x-e.x,m.chase.y-e.y)<120)m.chase=null});if(bomb.car==e.id){bomb.car=-1;bomb.ix=e.x;bomb.iy=e.y;bomb.drop=1;bomb.dropT=T}if(e.team==atk)HEAT[nsite(e)]++}}
-function throwGren(e,tx,ty){if(!e.alive||!(e.gren>0)||st.s!=='live'||!isFinite(tx)||!isFinite(ty))return;let dx=tx-e.x,dy=ty-e.y;const d=Math.hypot(dx,dy)||1;dx/=d;dy/=d;
+function throwGren(e,tx,ty){if(!e.alive||!(e.gren>0)||st.s!=='live'||!isFinite(tx)||!isFinite(ty))return;
+ if(!e.p&&E.some(m=>m.alive&&m.team===e.team&&Math.hypot(m.x-tx,m.y-ty)<GR_R+40)){e.gcd=T+1;return}   // un allie trop pres de la cible : le bot renonce
+ let dx=tx-e.x,dy=ty-e.y;const d=Math.hypot(dx,dy)||1;dx/=d;dy/=d;
  const dd=Math.max(GR_MIN,Math.min(GR_MAX,d));tx=e.x+dx*dd;ty=e.y+dy*dd;
  // point de chute : on recule s'il tombe dans un obstacle ou hors de la carte
  for(let k=0;k<40&&(hit(tx,ty,6)||tx<20||ty<20||tx>WW-20||ty>WH-20);k++){tx-=dx*20;ty-=dy*20}
@@ -1129,7 +1131,7 @@ function updGren(dt){for(const g0 of GR){g0.t+=dt;
    // elle roule encore un peu puis s'arrete (sans traverser les murs)
    if(g0.rv>1){const nx=g0.x+g0.rx*g0.rv*dt,ny=g0.y+g0.ry*g0.rv*dt;if(!hit(nx,ny,6)){g0.x=nx;g0.y=ny}else g0.rv=0;g0.rv*=Math.pow(.02,dt)}}
   if(g0.t>=g0.T+GR_FUSE&&!g0.done){g0.done=1;const X=g0.x,Y=g0.y;GRX.push({u:g0.u,x:Math.round(X),y:Math.round(Y),t:T});if(GRX.length>8)GRX.shift();fxBoom(X,Y);
-   for(const e of E){if(!e.alive||e.team===g0.team)continue;if(Math.hypot(e.x-X,e.y-Y)<GR_R&&los({x:X,y:Y},e))hurt(e,GR_DMG,g0.id,1,X,Y)}
+   for(const e of E){if(!e.alive||e.id===g0.id)continue;if(Math.hypot(e.x-X,e.y-Y)<GR_R&&los({x:X,y:Y},e))hurt(e,GR_DMG,g0.id,1,X,Y)}   // allies et ennemis : memes degats
    for(const e of E)if(e.team!==g0.team&&e.alive)K[e.team][g0.id]={x:g0.sx,y:g0.sy,t:T,hear:1}}}
  GR=GR.filter(g0=>{if(g0.done){grHide(g0);return false}return true})}
 function grHide(g0){const m=g0.m;if(!m)return;m.g.visible=m.s.visible=m.zf.visible=m.zr.visible=m.zc.visible=false}
@@ -1392,7 +1394,7 @@ function startOnline(){sendNet({type:'start'})}
 // ---- client : applique l'etat recu de l'hote
 const NETD={arr:[],fr:[],ofs:null};
 function applyNetState(s){
- if(!s)return;if(s.hitOnly){const add=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7]}));HITEV=HITEV.concat(add).slice(-40);drawHitFxEvents();return}if(s.fl){FLG={p:s.fl[0],tm:s.fl[1],cap:s.fl[2]};FB=s.fb||[]}if(s.ss)STATS=s.ss.map(q=>({k:q[0],d:q[1],p:q[2],df:q[3],fl:q[4]}));if(s.hv)HITEV=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7]}));if(s.map&&s.map!==MAPID){loadMap(s.map);newRound();cRound=-1}if(!E||E.length!==2*TS)newRound();
+ if(!s)return;if(s.hitOnly){const add=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));HITEV=HITEV.concat(add).slice(-40);drawHitFxEvents();return}if(s.fl){FLG={p:s.fl[0],tm:s.fl[1],cap:s.fl[2]};FB=s.fb||[]}if(s.ss)STATS=s.ss.map(q=>({k:q[0],d:q[1],p:q[2],df:q[3],fl:q[4]}));if(s.hv)HITEV=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));if(s.map&&s.map!==MAPID){loadMap(s.map);newRound();cRound=-1}if(!E||E.length!==2*TS)newRound();
  // horloge : ecart entre notre horloge et le temps de jeu de l'hote (on garde le plus petit = le moins de retard), pour l'interpolation
  {const now=performance.now()/1000,o=now-s.T;(NETD.oh||(NETD.oh=[])).push([now,o]);while(NETD.oh.length&&now-NETD.oh[0][0]>2)NETD.oh.shift();NETD.ofs=Math.min(...NETD.oh.map(q=>q[1]));NETD.arr.push(now);while(NETD.arr.length&&now-NETD.arr[0]>2)NETD.arr.shift()}
  if(s.round!==cRound){cRound=s.round;B.forEach(b=>b.m.visible=false);B=[];XG.visible=false;EX=null;cBoom=0;lastU=0;E.forEach(e=>e.fresh=1)}
@@ -1421,7 +1423,7 @@ function netSnapshot(){const r=v=>Math.round(v*10)/10;return{map:MAPID,T:Math.ro
  players:E.map(e=>({id:e.id,q:e.ack||0,x:r(e.x),y:r(e.y),hp:e.hp,alive:e.alive?1:0,ang:Math.round(e.ang*100)/100,ammo:e.ammo,rl:e.rl,act:e.act?1:0,can:e.can,vt:r(e.vt),f:e.fT>0?1:0,p:e.p?1:0,b:e.body?1:0,g:e.gren||0})),
  gr:GR.map(g0=>[Math.round(g0.x),Math.round(g0.y),Math.round(g0.h),g0.t>=g0.T?Math.round(Math.min(1,(g0.t-g0.T)/GR_FUSE)*100):-1]),gx:GRX.filter(q=>T-q.t<1.5).map(q=>[q.u,q.x,q.y]),
  fl:[Math.round(FLG.p*10)/10,FLG.tm,FLG.cap],fb:FB,
- hv:HITEV.filter(q=>T-q.t<.6).map(q=>[q.u,q.k,q.v,Math.round(q.x),Math.round(q.y),Math.round(q.sx),Math.round(q.sy),q.kill]),ss:(netSnapN=(netSnapN||0)+1)%20===1||st.s!=='live'?E.map(e=>{const q=stat(e.id);return[q.k,q.d,q.p,q.df,q.fl]}):undefined,
+ hv:HITEV.filter(q=>T-q.t<.6).map(q=>[q.u,q.k,q.v,Math.round(q.x),Math.round(q.y),Math.round(q.sx),Math.round(q.sy),q.kill,q.g||0]),ss:(netSnapN=(netSnapN||0)+1)%20===1||st.s!=='live'?E.map(e=>{const q=stat(e.id);return[q.k,q.d,q.p,q.df,q.fl]}):undefined,
  bl:B.map(b=>[b.u,Math.round(b.x),Math.round(b.y),Math.round(b.vx),Math.round(b.vy),b.team,b.id])}}
 // ---- client : interpolation des autres, prediction de son propre deplacement
 function netClientTick(dt){
@@ -1587,7 +1589,7 @@ else{
    if(e.wdN>=2){e.wdN=0;for(let k=0;k<12;k++){const a=Math.random()*6.28,r=160+Math.random()*200,q=[e.x+Math.cos(a)*r,e.y+Math.sin(a)*r];
      if(q[0]>60&&q[1]>60&&q[0]<WW-60&&q[1]<WH-60&&!hit(q[0],q[1],16)){e.tag='wd'+(T|0);e.path=[q];e.pi=0;e.mode='go';e.tk=1.4;e.hslot=(e.hslot||0)+1;e.chase=null;break}}}}else e.wdN=0}
  // esquive : une grenade ennemie va exploser tout pres -> on s'eloigne du point d'impact
- for(const g0 of GR){if(g0.team===e.team)continue;const gx_=g0.land?g0.x:g0.tx,gy_=g0.land?g0.y:g0.ty,dx=e.x-gx_,dy=e.y-gy_,d=Math.hypot(dx,dy);
+ for(const g0 of GR){if(g0.id===e.id)continue;const gx_=g0.land?g0.x:g0.tx,gy_=g0.land?g0.y:g0.ty,dx=e.x-gx_,dy=e.y-gy_,d=Math.hypot(dx,dy);
   // une grenade au sol se voit : l'esquive devient tres probable ; en vol, seulement une fois sur deux
   if(d<GR_R+30&&g0.t>g0.T*.6&&(g0.land?((g0.sv2=g0.sv2||{})[e.id]??(g0.sv2[e.id]=Math.random()<.65)):((g0.sv=g0.sv||{})[e.id]??(g0.sv[e.id]=Math.random()<.5)))){const a=Math.atan2(dy,dx);let best=null;for(const da of[0,.6,-.6,1.2,-1.2]){const ax=Math.cos(a+da),ay=Math.sin(a+da);if(!hit(e.x+ax*30,e.y+ay*30,12)){best=[ax,ay];break}}if(best){mx=best[0];my=best[1]}break}}
  let df=e.want-e.ang;df=Math.atan2(Math.sin(df),Math.cos(df));e.ang+=Math.max(-13*dt,Math.min(13*dt,df))}
@@ -1744,11 +1746,14 @@ function drawBoostNotif(hm){if(!hm)return;if(round!==boostRound){boostRound=roun
 function boostSnd(){if(!AC||!WS)return;const t=AC.currentTime;[523,659,784,1047].forEach((f,i)=>{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.value=f;gn.gain.setValueAtTime(0,t+i*.08);gn.gain.linearRampToValueAtTime(.18,t+i*.08+.02);gn.gain.exponentialRampToValueAtTime(.001,t+i*.08+.35);o.connect(gn);gn.connect(WS);o.start(t+i*.08);o.stop(t+i*.08+.4)})}
 function wscr(x,y,h){const v=new THREE.Vector3(x,h||20,y).project(cam);return[(v.x+1)/2*W,(1-v.y)/2*H]}
 let cliCd=0;
-function drawHitFxEvents(){const now=performance.now();for(const q of HITEV){if(q.u<=lastHitU)continue;lastHitU=q.u;if(q.k===localSlot&&q.v!==localSlot){HITM.push({x:q.x,y:q.y,t0:now,kill:q.kill})}if(q.v===localSlot)DMGI.push({sx:q.sx,sy:q.sy,t0:now})}}
+function drawHitFxEvents(){const now=performance.now();for(const q of HITEV){if(q.u<=lastHitU)continue;lastHitU=q.u;if(q.k===localSlot&&q.v!==localSlot){const me=E[localSlot],vic=E[q.v];HITM.push({x:q.x,y:q.y,t0:now,kill:q.kill,g:q.g,ally:!!(q.g&&me&&vic&&vic.team===me.team)})}if(q.v===localSlot)DMGI.push({sx:q.sx,sy:q.sy,t0:now})}}
 function drawHitFx(hm){const now=performance.now();
  drawHitFxEvents();
  // marqueur de touche sur l'ennemi touche (rouge et plus grand si elimination)
- HITM=HITM.filter(m=>now-m.t0<(m.kill?650:380));for(const m of HITM){const[x,y]=wscr(m.x,m.y,22);if(!isFinite(x))continue;const f=(now-m.t0)/(m.kill?650:380),r=(m.kill?9:6)*(1+f*.35);
+ HITM=HITM.filter(m=>now-m.t0<(m.g?1100:(m.kill?650:380)));for(const m of HITM){
+  if(m.g){const[x,y]=wscr(m.x,m.y,22);if(!isFinite(x))continue;const f=(now-m.t0)/1100,col=m.ally?'#5ab4ff':(m.kill?'#ff4a3a':'#ffa13a'),r=10;
+   g.save();g.globalAlpha=f<.7?1:1-(f-.7)/.3;g.strokeStyle=col;g.lineWidth=2.4;g.beginPath();g.arc(x,y,r+4,0,7);g.stroke();g.beginPath();for(const[a,b]of[[1,1],[1,-1],[-1,1],[-1,-1]]){g.moveTo(x+a*r*.35,y+b*r*.35);g.lineTo(x+a*r,y+b*r)}g.stroke();
+   txt(m.ally?'Allié touché':'−'+GR_DMG,x,y-22-f*18,m.ally?11:13,col,null,800);g.restore();continue}const[x,y]=wscr(m.x,m.y,22);if(!isFinite(x))continue;const f=(now-m.t0)/(m.kill?650:380),r=(m.kill?9:6)*(1+f*.35);
   g.save();g.globalAlpha=1-f;g.strokeStyle=m.kill?'#ff4a3a':'#ffffff';g.lineWidth=m.kill?2.4:1.8;g.beginPath();for(const[a,b]of[[1,1],[1,-1],[-1,1],[-1,-1]]){g.moveTo(x+a*r*.45,y+b*r*.45);g.lineTo(x+a*r,y+b*r)}g.stroke();g.restore()}
  // direction des degats recus : arc rouge autour de ton personnage, tourne vers le tireur
  DMGI=DMGI.filter(d=>now-d.t0<1300);if(hm&&DMGI.length){const[px,py]=wscr(hm.x,hm.y,10);if(isFinite(px))for(const d of DMGI){let a=Math.atan2(d.sy-hm.y,d.sx-hm.x);if(FLIP)a+=Math.PI;const f=(now-d.t0)/1300;
