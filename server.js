@@ -1,4 +1,5 @@
-// Serveur des parties privées (Detonate)
+// Serveur des parties privées (Detonate) : le serveur fait tourner la partie (autorité) ;
+// les joueurs envoient leurs commandes et reçoivent l'état de la partie
 // - sert le jeu (index.html) et gère les salons par code à 5 caractères
 // - l'hôte fait tourner la partie ; le serveur relaie les touches et l'état
 // - les places libres sont jouées par l'IA chez l'hôte
@@ -6,6 +7,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
+const { createGame } = require('./game_sim');
 
 const PORT = process.env.PORT || 3000;
 const INDEX = path.join(__dirname, 'index.html');
@@ -62,19 +64,28 @@ function leave(ws) {
   const p = room.players.find(x => x.ws === ws);
   if (!p) return;
   room.players = room.players.filter(x => x !== p);
-  if (room.players.length === 0) { rooms.delete(room.code); return; }
-  if (p.id === room.hostId) {
-    if (room.started) {
-      // l'état de la partie est chez l'hôte : sans lui, la partie s'arrête
-      room.players.forEach(x => { send(x.ws, { type: 'closed' }); x.ws.room = null; });
-      rooms.delete(room.code);
-      return;
-    }
-    room.hostId = room.players[0].id;   // dans le salon d'attente, on passe la main
-  }
+  if (room.players.length === 0) { stopGame(room); rooms.delete(room.code); return; }
+  if (p.id === room.hostId) room.hostId = room.players[0].id;   // le salon change simplement de responsable
+  if (room.game) room.game.leave(p.slot);                        // la partie continue : l'IA prend sa place
   room.players.forEach(x => send(x.ws, { type: 'peer_left', slot: p.slot }));
   if (!room.started) lobby(room);
 }
+
+// ---------- partie calculée par le serveur ----------
+// 60 calculs par seconde ; l'état est envoyé à tous les joueurs environ 20 fois par seconde.
+function startGame(room) {
+  const sendAll = msg => { const t = JSON.stringify(msg); room.players.forEach(x => { if (x.ws.readyState === 1) x.ws.send(t); }); };
+  try { room.game = createGame(room.map, publicPlayers(room), sendAll); }
+  catch (e) { console.error('Impossible de lancer la partie :', e); room.players.forEach(x => send(x.ws, { type: 'closed' })); return; }
+  let last = Date.now(), lastSend = 0, endAt = 0;
+  room.timer = setInterval(() => {
+    const now = Date.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
+    try { room.game.step(dt); } catch (e) { console.error('Erreur de simulation :', e); }
+    if (now - lastSend >= 48) { lastSend = now; try { sendAll({ type: 'state', state: room.game.snapshot() }); } catch (e) {} }
+    if (room.game.state() === 'end') { endAt = endAt || now; if (now - endAt > 120000) { stopGame(room); rooms.delete(room.code); } }
+  }, 16);
+}
+function stopGame(room) { if (room.timer) clearInterval(room.timer); room.timer = null; room.game = null; }
 
 // ---------- messages ----------
 wss.on('connection', ws => {
@@ -137,19 +148,19 @@ wss.on('connection', ws => {
         if (!p || p.id !== room.hostId) return;
         room.started = true;
         const players = publicPlayers(room);
-        return room.players.forEach(x => send(x.ws, { type: 'start', players, map: room.map, size: room.size }));
+        room.players.forEach(x => send(x.ws, { type: 'start', players, map: room.map, size: room.size, server: true }));
+        return startGame(room);
       }
 
-      case 'input': {                       // invité -> hôte
-        if (!room || !room.started) return;
+      case 'input': {                       // joueur -> partie du serveur
+        if (!room || !room.started || !room.game) return;
         const p = room.players.find(x => x.ws === ws);
-        const host = room.players.find(x => x.id === room.hostId);
-        if (p && host && p !== host) send(host.ws, { type: 'remote_input', slot: p.slot, input: m.input });
+        if (p && m.input && typeof m.input === 'object') room.game.input(p.slot, m.input);
         return;
       }
 
-      case 'state': {                       // hôte -> invités
-        if (!room || !room.started) return;
+      case 'state': {                       // (ancien mode) ignoré : c'est le serveur qui calcule la partie
+        if (!room || !room.started || room.game) return;
         const p = room.players.find(x => x.ws === ws);
         if (!p || p.id !== room.hostId) return;
         const msg = JSON.stringify({ type: 'state', state: m.state });
