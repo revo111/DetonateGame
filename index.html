@@ -23,6 +23,14 @@ canvas{position:fixed;left:0;top:0}#h{pointer-events:none}
 #menuMsg{min-height:20px;margin:8px 0;font-size:13px;color:#ffc83c}.hidden{display:none!important}
 #fsBtn{position:fixed;left:calc(10px + env(safe-area-inset-left,0px));top:calc(122px + env(safe-area-inset-top,0px));width:34px;height:34px;border-radius:10px;border:1px solid #ffffff2a;background:#000a;color:#fff;opacity:.5;display:none;align-items:center;justify-content:center;z-index:55;padding:0;touch-action:none;-webkit-tap-highlight-color:transparent}#fsBtn:active{opacity:.9}#fsBtn svg{width:18px;height:18px}
 #fsTip{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:86vw;background:#0b1220ee;color:#fff;font:500 13px system-ui;padding:10px 14px;border-radius:10px;z-index:56;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
+
+/* menu et salon : toujours entierement accessibles (defilement si l'ecran est trop petit), plus compacts */
+#menu{align-items:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:max(10px,env(safe-area-inset-top)) 0 max(10px,env(safe-area-inset-bottom))}
+#menu .panel{margin:auto;max-height:none;padding:clamp(14px,3.2vh,28px)}
+#players{margin:10px 0}
+.player{padding:6px 12px;margin:3px 0}
+@media (max-height:760px){#menu h1{font-size:32px}#menu .sub{margin-bottom:12px}#menu button{padding-top:11px!important;padding-bottom:11px!important;margin-top:7px!important}.player{padding:4px 10px;margin:2px 0;font-size:14px}#roomCode{font-size:30px!important}}
+@media (max-height:560px){.player{padding:3px 8px;font-size:13px}#players{margin:6px 0}#menu button{padding-top:8px!important;padding-bottom:8px!important}}
 </style></head><body>
 <div id="menu"><div class="panel">
 <h1>DETONATE</h1><div class="sub">3D Tactical Shooter</div>
@@ -1405,7 +1413,7 @@ function netClientTick(dt){
  {const me=E[localSlot];cliCd-=dt;if(me&&me.alive&&st.s==='live'&&li.fire&&cliCd<=0&&me.ammo>0&&!(me.rl>0)&&!(me.act&&me.can)){cliCd=.2/(me.boost?1.3:1);const m=BP.find(w=>!w.visible);
   if(m){m.visible=true;const a=aimAng;B.push({loc:1,born:performance.now(),x:me.x+Math.cos(a)*14,y:me.y+Math.sin(a)*14,vx:Math.cos(a)*960,vy:Math.sin(a)*960,team:me.team,id:me.id,m,t:.9});me.fT=.06;shot(1)}}}
  for(const e of E){if(e.tx===undefined)continue;const ox=e.x,oy=e.y;e.fT-=dt;
-  if(e.id===localSlot&&e.alive&&st.s==='live'){let mx=li.mx,my=li.my;if(e.act&&e.can){mx=my=0}const len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len}const ddx=mx*190*(e.boost?1.3:1)*dt,ddy=my*190*(e.boost?1.3:1)*dt;mv(e,ddx,ddy);e.pdx=(e.pdx||0)+ddx;e.pdy=(e.pdy||0)+ddy;
+  if(e.id===localSlot&&e.alive&&st.s==='live'){let mx=li.mx,my=li.my;if(e.act&&e.can){mx=my=0}const len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len}const ddx=mx*152*(e.boost?1.2:1)*dt,ddy=my*152*(e.boost?1.2:1)*dt;mv(e,ddx,ddy);e.pdx=(e.pdx||0)+ddx;e.pdy=(e.pdy||0)+ddy;
    if(!e.ackMode){const ex=e.tx-e.x,ey=e.ty-e.y;if(Math.hypot(ex,ey)>90){e.x=e.tx;e.y=e.ty}else{e.x+=ex*.1;e.y+=ey*.1}}e.ang=aimAng}
   else{const gap=e.rcv?Math.min(.25,(performance.now()-e.rcv)/1000):0,mvOk=e.alive&&st.s==='live'&&Math.hypot(e.vx||0,e.vy||0)<400,gx_=e.tx+(mvOk?(e.vx||0)*gap:0),gy_=e.ty+(mvOk?(e.vy||0)*gap:0);
    e.x+=(gx_-e.x)*k;e.y+=(gy_-e.y)*k;let df=e.tang-e.ang;df=Math.atan2(Math.sin(df),Math.cos(df));e.ang+=df*k}
@@ -1565,9 +1573,9 @@ else{
  let df=e.want-e.ang;df=Math.atan2(Math.sin(df),Math.cos(df));e.ang+=Math.max(-13*dt,Math.min(13*dt,df))}
 if(warm){fire=0;act=0;mx=0;my=0;e.lv=[0,0];e.mvn=0}
 if(act&&can){if(can==1){planters=1;psite=zs;plantId=e.id}else{defusers=1;defId=e.id}e.act=1;mx=my=0}else e.act=0;
-const sp=(e.p?190:172)*(e.boost?1.3:1),len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len}
+const sp=(e.p?152:138)*(e.boost?1.2:1),len=Math.hypot(mx,my);if(len>1){mx/=len;my/=len}
 if(e.nudge>0){e.nudge-=dt;mx=e.nx;my=e.ny}{const ox=e.x,oy=e.y;
- if(netMode&&isHost&&e.p&&e.id!==localSlot&&e.mq){const lim=sp*1.3*.3;for(const[q,dx,dy]of e.mq){if(!warm&&!(act&&can)){const l=Math.hypot(dx,dy),f=l>lim?lim/l:1;mv(e,dx*f,dy*f)}e.ack=q}e.mq.length=0}
+ if(netMode&&isHost&&e.p&&e.id!==localSlot&&e.mq){const lim=sp*1.2*.3;for(const[q,dx,dy]of e.mq){if(!warm&&!(act&&can)){const l=Math.hypot(dx,dy),f=l>lim?lim/l:1;mv(e,dx*f,dy*f)}e.ack=q}e.mq.length=0}
  else mv(e,mx*sp*dt,my*sp*dt);e.lv=[(e.x-ox)/dt,(e.y-oy)/dt];if(!e.p&&len>.3&&Math.hypot(e.lv[0],e.lv[1])<40){e.stk=(e.stk||0)+dt;
   if(e.stk>.35){e.stk=0;e.nudge=.45;
    // on cherche la direction libre la plus proche de l'objectif au lieu d'un cap au hasard
@@ -1705,7 +1713,7 @@ function drawBoostNotif(hm){if(!hm)return;if(round!==boostRound){boostRound=roun
  g.save();g.globalAlpha=a;g.translate(cx,cy);g.scale(sc,sc);
  pill(-bw/2,-bh/2,bw,bh,14,'rgba(8,12,22,.88)');g.lineWidth=2;g.strokeStyle='#e0402f';g.beginPath();g.roundRect?g.roundRect(-bw/2+1,-bh/2+1,bw-2,bh-2,14):g.rect(-bw/2,-bh/2,bw,bh);g.stroke();
  icoFlag(-bw/2+30,-bh/2+26,11);txt('BOOST DU DRAPEAU OBTENU',-bw/2+50,-bh/2+26,15,'#ffd9a0','left',800);
- const items=[['+25 %','PV'],['+30 %','cadence de tir'],['+30 %','vitesse de déplacement']];
+ const items=[['+25 %','PV'],['+30 %','cadence de tir'],['+20 %','vitesse de déplacement']];
  items.forEach(([v,l],i)=>{const y=-bh/2+52+i*15;txt(v,-bw/2+50,y,12,'#7ef0a0','left',800);txt(l,-bw/2+98,y,12,'rgba(255,255,255,.9)','left',600)});
  g.restore()}
 function boostSnd(){if(!AC||!WS)return;const t=AC.currentTime;[523,659,784,1047].forEach((f,i)=>{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.value=f;gn.gain.setValueAtTime(0,t+i*.08);gn.gain.linearRampToValueAtTime(.18,t+i*.08+.02);gn.gain.exponentialRampToValueAtTime(.001,t+i*.08+.35);o.connect(gn);gn.connect(WS);o.start(t+i*.08);o.stop(t+i*.08+.4)})}
