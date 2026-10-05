@@ -1443,7 +1443,7 @@ function netClientTick(dt){
 let inSeq=0,PHIST=[];
 function netInput(){const i=localInpC||{},rl=relPend;relPend=0;const me=E&&E[localSlot];inSeq++;let dx_=0,dy_=0;if(me){dx_=Math.round((me.pdx||0)*100)/100;dy_=Math.round((me.pdy||0)*100)/100;me.pdx=me.pdy=0;PHIST.push({q:inSeq,x:me.x,y:me.y});if(PHIST.length>90)PHIST.shift()}return{q:inSeq,dx:dx_,dy:dy_,mx:i.mx||0,my:i.my||0,fire:i.fire||0,act:i.act||0,tap:0,rel:rl,ang:aimAng,gs:i.gs||0,gx:i.gx||0,gy:i.gy||0}}
 function netLoop(t){if(!netMode||!netStarted)return;
- if(!isHost&&t-lastNetSend>33){lastNetSend=t;sendNet({type:'input',input:netInput()})}
+ if(!isHost&&t-lastNetSend>15){lastNetSend=t;sendNet({type:'input',input:netInput()})}   // commandes ~60 fois par seconde
  if(isHost&&t-lastNetState>50){lastNetState=t;sendNet({type:'state',state:netSnapshot()})}
  if(t-lastPing>2000){lastPing=t;sendNet({type:'ping',t:performance.now()})}}
 let mapChoice='nuit';
