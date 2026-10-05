@@ -1371,7 +1371,7 @@ async function joinRoom(){const c=$('codeInput').value.trim().toUpperCase();if(c
  menuMessage('Connexion… (un serveur gratuit peut mettre 30 s à se réveiller)');try{await wsConnect();sendNet({type:'join',code:c,name:myName()})}catch(e){menuMessage(e.message,'danger')}}
 function slotName(i){const p=netPlayers.find(x=>x.slot===i);return p?(i===localSlot?'Vous':p.name):'IA'}
 function netMessage(m){
- if(m.type==='pong'){netPing=Math.round(performance.now()-m.t);return}
+ if(m.type==='pong'){const rtt=performance.now()-m.t;if(rtt<=1500)NETQ.ok.add(m.t);   /* une reponse arrivee apres 1,5 s compte comme perdue */NETQ.rtt.push(rtt);if(NETQ.rtt.length>8)NETQ.rtt.shift();netPing=Math.round(NETQ.rtt.reduce((a,b)=>a+b,0)/NETQ.rtt.length);return}
  if(m.type==='error')return menuMessage(m.message,'danger');
  if(m.type==='created'||m.type==='joined'){if(m.map)netMap=m.map;if(m.size)netSize=m.size;netMode=true;isHost=!!m.host;netRoomCode=m.code;netPlayerId=m.id;localSlot=m.slot;menuShow('lobby');$('roomCode').textContent=m.code;menuMessage('Partage ce code à tes amis.');return}
  if(m.type==='lobby'){if(m.map)netMap=m.map;if(m.size)netSize=m.size;netPlayers=m.players||[];netRoomCode=m.code||netRoomCode;const me=netPlayers.find(p=>p.id===netPlayerId);if(me){localSlot=me.slot;isHost=!!me.host}renderLobby();return}
@@ -1395,9 +1395,12 @@ function renderLobby(){
 function startOnline(){sendNet({type:'start'})}
 // ---- client : applique l'etat recu de l'hote
 const NETD={arr:[],fr:[],ofs:null};
+// qualite de connexion : ping (moyenne), gigue (variation du temps de trajet des etats), pertes (pings sans reponse en 1,5 s)
+const NETQ={sent:[],ok:new Set(),rtt:[],jit:0,ptr:null};   // pertes : pings sans reponse, ou reponse arrivee trop tard (plus de 1,5 s)
 function applyNetState(s){
  if(!s)return;if(s.hitOnly){const add=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));HITEV=HITEV.concat(add).slice(-40);drawHitFxEvents();return}if(s.fl){FLG={p:s.fl[0],tm:s.fl[1],cap:s.fl[2],fast:!!s.fl[3],rt:s.fl[3]?1:-1};FB=s.fb||[]}if(s.ss)STATS=s.ss.map(q=>({k:q[0],d:q[1],p:q[2],df:q[3],fl:q[4]}));if(s.hv)HITEV=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));if(s.map&&s.map!==MAPID){loadMap(s.map);newRound();cRound=-1}if(!E||E.length!==2*TS)newRound();
  // horloge : ecart entre notre horloge et le temps de jeu de l'hote (on garde le plus petit = le moins de retard), pour l'interpolation
+ {const tr=performance.now()/1000-s.T;if(s.st&&s.st.s==='live'){if(NETQ.ptr!==null)NETQ.jit+=(Math.abs(tr-NETQ.ptr)*1000-NETQ.jit)/16;NETQ.ptr=tr}else NETQ.ptr=null}
  {const now=performance.now()/1000,o=now-s.T;(NETD.oh||(NETD.oh=[])).push([now,o]);while(NETD.oh.length&&now-NETD.oh[0][0]>2)NETD.oh.shift();NETD.ofs=Math.min(...NETD.oh.map(q=>q[1]));NETD.arr.push(now);while(NETD.arr.length&&now-NETD.arr[0]>2)NETD.arr.shift()}
  if(s.round!==cRound){cRound=s.round;B.forEach(b=>b.m.visible=false);B=[];XG.visible=false;EX=null;cBoom=0;lastU=0;E.forEach(e=>e.fresh=1)}
  T=s.T;round=s.round;atk=s.atk;score=s.score;bomb=s.bomb;st=s.st;KL=s.kl||[];
@@ -1445,7 +1448,7 @@ function netInput(){const i=localInpC||{},rl=relPend;relPend=0;const me=E&&E[loc
 function netLoop(t){if(!netMode||!netStarted)return;
  if(!isHost&&t-lastNetSend>15){lastNetSend=t;sendNet({type:'input',input:netInput()})}   // commandes ~60 fois par seconde
  if(isHost&&t-lastNetState>50){lastNetState=t;sendNet({type:'state',state:netSnapshot()})}
- if(t-lastPing>2000){lastPing=t;sendNet({type:'ping',t:performance.now()})}}
+ if(t-lastPing>1000){lastPing=t;const pt=performance.now();NETQ.sent.push(pt);if(NETQ.sent.length>30)NETQ.sent.shift();sendNet({type:'ping',t:pt})}}
 let mapChoice='nuit';
 document.querySelectorAll('.mapBtn').forEach(b=>b.onclick=()=>{mapChoice=b.dataset.map;document.querySelectorAll('.mapBtn').forEach(x=>x.classList.toggle('sel',x===b))});
 function soloNames(){return Array.from({length:2*TS},(_,i)=>i===0?'Vous':(i<TS?'Allié '+i:'Ennemi '+(i-TS+1)))}
@@ -1835,9 +1838,10 @@ ren.render(sc,cam);
 // HUD
 g.clearRect(0,0,W,H);if(exHud>0){g.fillStyle='rgba(255,236,190,'+(exHud*.55).toFixed(3)+')';g.fillRect(0,0,W,H)}{const nw=performance.now();NETD.fr.push(nw);while(NETD.fr.length&&nw-NETD.fr[0]>1000)NETD.fr.shift()}
 if(netMode&&netStarted&&!isHost&&NETD.arr.length&&performance.now()/1000-NETD.arr[NETD.arr.length-1]>.6&&st.s!=='end'){pill(W/2-90,H*.3-14,180,28,14,'rgba(140,30,20,.85)');txt('Connexion instable…',W/2,H*.3,12,'#fff',null,700)}
-if(netMode&&netStarted){g.font='600 10px system-ui';g.textAlign='right';let gap=0;for(let i=1;i<NETD.arr.length;i++)gap=Math.max(gap,NETD.arr[i]-NETD.arr[i-1]);
- const rate=NETD.arr.length/2,txtN=isHost?('Hôte · '+NETD.fr.length+' i/s'):('Ping '+netPing+' ms · '+rate.toFixed(0)+' états/s · saut max '+Math.round(gap*1000)+' ms · '+NETD.fr.length+' i/s');
- g.fillStyle=(!isHost&&(netPing>180||gap>.25))?'rgba(255,150,120,.85)':'rgba(255,255,255,.5)';g.fillText(txtN,W-10,H-8)}
+if(netMode&&netStarted&&!isHost){const nw=performance.now(),old=NETQ.sent.filter(x=>nw-x>1500),lost=old.filter(x=>!NETQ.ok.has(x)).length,loss=old.length?Math.round(lost/old.length*100):0;
+ const jit=Math.round(NETQ.jit),bad=netPing>150||jit>30||loss>2;g.save();g.font='600 10px system-ui';g.textAlign='left';g.textBaseline='alphabetic';
+ const t1='Ping '+netPing+' ms   Jitter '+jit+' ms   Pertes '+loss+' %',tw=g.measureText(t1).width,x=10+(typeof env==='undefined'?0:0),y=H-8;
+ g.fillStyle='rgba(6,10,18,.45)';g.fillRect(x-5,y-11,tw+10,15);g.fillStyle=bad?'rgba(255,160,120,.95)':'rgba(255,255,255,.62)';g.fillText(t1,x,y);g.restore()}
 drawMiniDynamic();
 const hm=E.find(e=>e.id===localSlot)||E[0],cl=Math.max(0,Math.ceil(st.clock)),narrow=W<640||W/2-118<MMW+22;
 const pw=narrow?Math.max(150,W-MMW-34):236,ph=38,px=narrow?MMW+22:W/2-pw/2,py=10,pcx=px+pw/2,live=bomb.planted&&!bomb.defused;
