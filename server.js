@@ -1,4 +1,4 @@
-// Serveur des parties privées 3v3 (Search & Destroy 3D)
+// Serveur des parties privées (Detonate)
 // - sert le jeu (index.html) et gère les salons par code à 5 caractères
 // - l'hôte fait tourner la partie ; le serveur relaie les touches et l'état
 // - les places libres sont jouées par l'IA chez l'hôte
@@ -78,6 +78,7 @@ function leave(ws) {
 
 // ---------- messages ----------
 wss.on('connection', ws => {
+  try { ws._socket.setNoDelay(true); } catch (e) {}          // envoi immediat des petits messages (pas de regroupement TCP)
   ws.alive = true;
   ws.on('pong', () => { ws.alive = true; });
   ws.budget = 0;
