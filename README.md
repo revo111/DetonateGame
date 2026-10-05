@@ -25,7 +25,8 @@ Sur mobile : stick gauche pour bouger, stick droit pour viser et tirer, boutons 
 
 ## Fichiers
 - `index.html` : le jeu complet (Three.js r128 chargé depuis cdnjs).
-- `server.js` : serveur Node.js (fichiers du jeu + WebSocket des parties privées).
+- `server.js` : serveur Node.js (fichiers du jeu + salons des parties privées).
+- `game_sim.js` : la partie calculée par le serveur (autorité) : déplacements, tirs, dégâts, bombe, grenades, drapeau, IA, scores. Les joueurs n'envoient que leurs commandes.
 - `package.json` : dépendance `ws` et commande de démarrage.
 
 ## Lancer en local
