@@ -1083,9 +1083,11 @@ function flagUpdate(dt){const F=CUR&&CUR.FLAG;if(!F||FLG.cap>=0)return;
  const who=[[],[]];for(const e of E)if(e.alive&&Math.hypot(e.x-F.x,e.y-F.y)<F.r)who[e.team].push(e);
  const n0=who[0].length,n1=who[1].length;
  if(n0&&n1)return;                                   // les deux equipes dans le cercle : decompte fige
- if(!n0&&!n1){FLG.p=Math.max(0,FLG.p-dt);if(FLG.p<=0)FLG.tm=-1;return}   // cercle vide : -1 s par seconde
+ if(!n0&&!n1){FLG.rt=-1;FLG.fast=false;FLG.p=Math.max(0,FLG.p-dt);if(FLG.p<=0)FLG.tm=-1;return}   // cercle vide : -1 s par seconde
  const t=n0?0:1;
- if(FLG.tm>=0&&FLG.tm!==t){FLG.p=Math.max(0,FLG.p-dt);if(FLG.p<=0)FLG.tm=-1;return}  // l'adversaire remet d'abord le decompte a zero
+ if(FLG.tm>=0&&FLG.tm!==t){if(FLG.rt!==t){FLG.rt=t;FLG.fast=FLG.p>=FLAG_T*.5}   // debut d'une reprise : rapide si la barre adverse est a 50 % ou plus
+  FLG.p=Math.max(0,FLG.p-dt*(FLG.fast?1.5:1));if(FLG.p<=0){FLG.tm=-1;FLG.fast=false;FLG.rt=-1}return}   // l'adversaire remet d'abord le decompte a zero
+ FLG.rt=-1;FLG.fast=false;
  FLG.tm=t;FLG.p=Math.min(FLAG_T,FLG.p+dt);
  if(FLG.p>=FLAG_T){FLG.cap=t;const pool=who[t].slice();for(let i=pool.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[pool[i],pool[j]]=[pool[j],pool[i]]}
   FB=pool.slice(0,3).map(e=>e.id);for(const m of who[t])stat(m.id).fl++;for(const e of pool.slice(0,3)){e.boost=1;e.maxhp=BOOST_HP;e.hp=Math.min(BOOST_HP,e.hp+(BOOST_HP-BASE_HP))}
@@ -1394,7 +1396,7 @@ function startOnline(){sendNet({type:'start'})}
 // ---- client : applique l'etat recu de l'hote
 const NETD={arr:[],fr:[],ofs:null};
 function applyNetState(s){
- if(!s)return;if(s.hitOnly){const add=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));HITEV=HITEV.concat(add).slice(-40);drawHitFxEvents();return}if(s.fl){FLG={p:s.fl[0],tm:s.fl[1],cap:s.fl[2]};FB=s.fb||[]}if(s.ss)STATS=s.ss.map(q=>({k:q[0],d:q[1],p:q[2],df:q[3],fl:q[4]}));if(s.hv)HITEV=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));if(s.map&&s.map!==MAPID){loadMap(s.map);newRound();cRound=-1}if(!E||E.length!==2*TS)newRound();
+ if(!s)return;if(s.hitOnly){const add=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));HITEV=HITEV.concat(add).slice(-40);drawHitFxEvents();return}if(s.fl){FLG={p:s.fl[0],tm:s.fl[1],cap:s.fl[2],fast:!!s.fl[3],rt:s.fl[3]?1:-1};FB=s.fb||[]}if(s.ss)STATS=s.ss.map(q=>({k:q[0],d:q[1],p:q[2],df:q[3],fl:q[4]}));if(s.hv)HITEV=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));if(s.map&&s.map!==MAPID){loadMap(s.map);newRound();cRound=-1}if(!E||E.length!==2*TS)newRound();
  // horloge : ecart entre notre horloge et le temps de jeu de l'hote (on garde le plus petit = le moins de retard), pour l'interpolation
  {const now=performance.now()/1000,o=now-s.T;(NETD.oh||(NETD.oh=[])).push([now,o]);while(NETD.oh.length&&now-NETD.oh[0][0]>2)NETD.oh.shift();NETD.ofs=Math.min(...NETD.oh.map(q=>q[1]));NETD.arr.push(now);while(NETD.arr.length&&now-NETD.arr[0]>2)NETD.arr.shift()}
  if(s.round!==cRound){cRound=s.round;B.forEach(b=>b.m.visible=false);B=[];XG.visible=false;EX=null;cBoom=0;lastU=0;E.forEach(e=>e.fresh=1)}
@@ -1422,7 +1424,7 @@ let netSnapN=0;
 function netSnapshot(){const r=v=>Math.round(v*10)/10;return{map:MAPID,T:Math.round(T*1000)/1000,round,atk,score,bomb,st,kl:KL.slice(-10),
  players:E.map(e=>({id:e.id,q:e.ack||0,x:r(e.x),y:r(e.y),hp:e.hp,alive:e.alive?1:0,ang:Math.round(e.ang*100)/100,ammo:e.ammo,rl:e.rl,act:e.act?1:0,can:e.can,vt:r(e.vt),f:e.fT>0?1:0,p:e.p?1:0,b:e.body?1:0,g:e.gren||0})),
  gr:GR.map(g0=>[Math.round(g0.x),Math.round(g0.y),Math.round(g0.h),g0.t>=g0.T?Math.round(Math.min(1,(g0.t-g0.T)/GR_FUSE)*100):-1]),gx:GRX.filter(q=>T-q.t<1.5).map(q=>[q.u,q.x,q.y]),
- fl:[Math.round(FLG.p*10)/10,FLG.tm,FLG.cap],fb:FB,
+ fl:[Math.round(FLG.p*10)/10,FLG.tm,FLG.cap,FLG.fast&&FLG.rt>=0?1:0],fb:FB,
  hv:HITEV.filter(q=>T-q.t<.6).map(q=>[q.u,q.k,q.v,Math.round(q.x),Math.round(q.y),Math.round(q.sx),Math.round(q.sy),q.kill,q.g||0]),ss:(netSnapN=(netSnapN||0)+1)%20===1||st.s!=='live'?E.map(e=>{const q=stat(e.id);return[q.k,q.d,q.p,q.df,q.fl]}):undefined,
  bl:B.map(b=>[b.u,Math.round(b.x),Math.round(b.y),Math.round(b.vx),Math.round(b.vy),b.team,b.id])}}
 // ---- client : interpolation des autres, prediction de son propre deplacement
@@ -1499,10 +1501,10 @@ addEventListener('pointermove',e=>{if(e.pointerType==='mouse'){mouseMode=1;mouse
 ['pointerup','pointercancel'].forEach(t=>addEventListener(t,e=>{if(e.pointerType==='mouse')mouse.down=0;delete P[e.pointerId]}));
 ab.addEventListener('pointerdown',e=>{e.preventDefault();actHeld=1});
 ['pointerup','pointercancel','pointerleave'].forEach(t=>ab.addEventListener(t,()=>actHeld=0));
-addEventListener('keyup',e=>{if(e.key.toLowerCase()==='g')requestGren()});
-addEventListener('blur',()=>{for(const k in keys)keys[k]=0;mouse.down=0});if(document.addEventListener)document.addEventListener('visibilitychange',()=>{if(document.hidden){for(const k in keys)keys[k]=0;mouse.down=0}});
-addEventListener('keydown',e=>{const kl=e.key.toLowerCase();if(isSpectating()&&!e.repeat){if(kl==='arrowright'||kl==='d')specCycle(1);if(kl==='arrowleft'||kl==='q'||kl==='a')specCycle(-1)}keys[kl]=1;if(e.key===' '||e.key.startsWith('Arrow'))e.preventDefault()});addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=0});
-function input(){const k=n=>n.some(x=>keys[x]);const gs=GS.seq,gx=GS.x,gy=GS.y;let mx=(k(['d','arrowright'])?1:0)-(k(['a','q','arrowleft'])?1:0),my=(k(['s','arrowdown'])?1:0)-(k(['w','z','arrowup'])?1:0),fire=(mouse.down||k(['f','shift']))?1:0,act=actHeld||k([' ','e']),ra=0,tap=0,rel=relReq||k(['r']);relReq=0;
+addEventListener('keyup',e=>{if(e.code==='KeyQ')requestGren()});   // grenade : touche A (AZERTY) = Q (QWERTY)
+addEventListener('blur',()=>{for(const k in keys)keys[k]=0;for(const k in KC)KC[k]=0;mouse.down=0});if(document.addEventListener)document.addEventListener('visibilitychange',()=>{if(document.hidden){for(const k in keys)keys[k]=0;for(const k in KC)KC[k]=0;mouse.down=0}});
+const KC={};addEventListener('keydown',e=>{KC[e.code]=1;const kl=e.key.toLowerCase();if(isSpectating()&&!e.repeat){if(kl==='arrowright'||kl==='d')specCycle(1);if(kl==='arrowleft'||kl==='q'||kl==='a')specCycle(-1)}keys[kl]=1;if(e.key===' '||e.key.startsWith('Arrow'))e.preventDefault()});addEventListener('keyup',e=>{KC[e.code]=0;keys[e.key.toLowerCase()]=0});
+function input(){const k=n=>n.some(x=>keys[x]);const gs=GS.seq,gx=GS.x,gy=GS.y;const kc=n=>n.some(x=>KC[x]);let mx=(kc(['KeyD','ArrowRight'])?1:0)-(kc(['KeyA','ArrowLeft'])?1:0),my=(kc(['KeyS','ArrowDown'])?1:0)-(kc(['KeyW','ArrowUp'])?1:0),fire=(mouse.down||k(['f','shift']))?1:0,act=actHeld||k([' ','e']),ra=0,tap=0,rel=relReq||k(['r']);relReq=0;
 for(const id in P){const p=P[id],dx=p.x-p.x0,dy=p.y-p.y0,h=Math.hypot(dx,dy)||1,m=Math.min(1,h/50);if(p.l){mx=dx/h*m;my=dy/h*m}else if(m>.08){ra=1;aimAng=Math.atan2(dy,dx)+(FLIP?Math.PI:0);if(m>.12)fire=1}}
 if(FLIP){mx=-mx;my=-my}
 if(!ra&&!mouseMode&&(mx||my))aimAng=Math.atan2(my,mx);return{mx,my,fire,act,tap,rel,gs,gx,gy}}
@@ -1696,7 +1698,7 @@ function pcard(x,y,cw,ch,e,ally,self){const dead=!e.alive,tc=TD(e.team);
 function icoGren(x,y,r,on){g.save();g.globalAlpha=on?1:.3;g.translate(x,y);g.fillStyle='#56652c';g.strokeStyle='#c8dca0';g.lineWidth=1.3;g.beginPath();g.ellipse(0,r*.2,r*.7,r*.85,0,0,7);g.fill();g.stroke();
  g.fillStyle='#9a9a92';g.fillRect(-r*.3,-r*.95,r*.6,r*.35);g.fillRect(r*.1,-r*.95,r*.55,r*.18);g.strokeStyle='#d8d8d0';g.lineWidth=1.2;g.beginPath();g.arc(-r*.55,-r*.85,r*.25,0,7);g.stroke();
  g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=1;g.beginPath();g.moveTo(-r*.6,r*.2);g.lineTo(r*.6,r*.2);g.stroke();g.restore();if(!on)txt('0',x+r+6,y,11,'rgba(255,255,255,.4)','left',600)}
-function drawGrenAim(hm){const touchA=typeof GA!=='undefined'&&GA;if(!(hm&&hm.alive&&hm.gren>0&&st.s==='live'&&((keys['g']&&mouseMode)||touchA)))return;const t=touchA?gaTarget():grTarget();if(!t)return;
+function drawGrenAim(hm){const touchA=typeof GA!=='undefined'&&GA;if(!(hm&&hm.alive&&hm.gren>0&&st.s==='live'&&((KC.KeyQ&&mouseMode)||touchA)))return;const t=touchA?gaTarget():grTarget();if(!t)return;
  if(touchA){const r=gb_.getBoundingClientRect(),bx=r.left+r.width/2,by=r.top+r.height/2,d=Math.hypot(GA.dx,GA.dy);g.save();g.strokeStyle='rgba(255,180,110,.85)';g.lineWidth=2;g.setLineDash([4,4]);g.beginPath();g.arc(bx,by,14+80,0,7);g.stroke();g.setLineDash([]);
   if(d>=14){g.beginPath();g.moveTo(bx,by);g.lineTo(bx+GA.dx,by+GA.dy);g.stroke()}g.fillStyle='rgba(255,180,110,.95)';g.beginPath();g.arc(bx+GA.dx,by+GA.dy,7,0,7);g.fill();
   txt(d<14?'Glisse pour viser · relâche pour lancer':'Relâche pour lancer',bx-20,by-108,12,'rgba(255,230,200,.95)','right',700);g.restore()}
@@ -1792,7 +1794,7 @@ function drawControls(a){if(a<=0)return;g.save();g.globalAlpha=a;
  row(['Clic gauche','/','F'],'Tirer');
  row(['R'],'Recharger');
  row(['Espace','/','E'],'Poser / désamorcer (maintenir)');
- row(['G'],'Grenade : maintenir pour viser, relâcher');
+ row(['A'],'Grenade : maintenir pour viser, relâcher');
  row(['C'],'Revoir les commandes (maintenir)');g.restore()}
 function txt(t,x,y,sz,col,al,wt){g.font=(wt||600)+' '+sz+'px system-ui,-apple-system,"Segoe UI",sans-serif';g.textAlign=al||'center';g.textBaseline='middle';g.shadowColor='rgba(0,0,0,.7)';g.shadowBlur=6;g.fillStyle=col||'#fff';g.fillText(t,x,y);g.shadowBlur=0;g.textBaseline='alphabetic'}
 function specList(mt){return E?E.filter(e=>e.team===mt&&e.alive&&e.id!==localSlot):[]}
@@ -1853,7 +1855,7 @@ txt(live?Math.ceil(Math.max(0,bomb.t)):Math.floor(cl/60)+':'+String(cl%60).padSt
 txt(bomb.planted?(bomb.defused?'Bombe désamorcée · site ':'Bombe posée · site ')+SITES[bomb.site].n:'Bombe non posée',pcx,HB+10,11,live?'#ff8a7a':'rgba(255,255,255,.6)',null,500);
 if(CUR.FLAG){const fy=HB+26,fc=FLG.cap>=0?TD(FLG.cap).css:(FLG.tm<0?'rgba(255,255,255,.55)':TD(FLG.tm).css);
  if(FLG.cap>=0)txt('Drapeau : '+TD(FLG.cap).nom+(FLG.cap===mt?' · bonus actif':''),pcx,fy,11,fc,null,600);
- else if(FLG.p>0){const w=110;pill(pcx-w/2,fy-3,w,5,3,'rgba(255,255,255,.18)');pill(pcx-w/2,fy-3,w*FLG.p/FLAG_T,5,3,fc);txt('Drapeau '+Math.ceil(FLAG_T-FLG.p)+' s',pcx,fy+11,10,fc,null,600)}
+ else if(FLG.p>0){const w=110;pill(pcx-w/2,fy-3,w,5,3,'rgba(255,255,255,.18)');pill(pcx-w/2,fy-3,w*FLG.p/FLAG_T,5,3,fc);txt(FLG.fast&&FLG.rt>=0?'Reprise rapide ×1,5':'Drapeau '+Math.ceil(FLAG_T-FLG.p)+' s',pcx,fy+11,10,FLG.fast&&FLG.rt>=0?'#ffb04a':fc,null,FLG.fast&&FLG.rt>=0?800:600)}
  else txt('Drapeau libre',pcx,fy,11,'rgba(255,255,255,.5)',null,500)}
 if(st.s==='freeze'){const FY0=Math.max(H*.3,HB+(CUR.FLAG?100:80));txt(Math.ceil(st.t),W/2,FY0,46,'#fff',null,700);txt(atk==mt?'ATTAQUE':'DÉFENSE',W/2,FY0+36,14,atk==mt?'#ffc83c':'#7fb0ff',null,700);txt((round===1?'Préparation… ':'')+'Manche '+round+' / '+MAX_ROUNDS+'  ·  '+WIN_PTS+' points pour gagner',W/2,FY0-42,13,'rgba(255,255,255,.55)',null,500);if(round==1&&!IS_PC)txt('Stick gauche : bouger · Stick droit : viser et tirer',W/2,FY0+60,12,'rgba(255,255,255,.55)',null,500)}
 else if(st.s==='live'){const MY0=Math.max(H*.2,HB+(CUR.FLAG?58:36),narrow?10+MMH+12+2*(MMW>150?34:30)+30:0);let tt=st.msg||'';if(!tt&&atk==mt&&!bomb.planted&&bomb.car<0)tt=bomb.drop?'Bombe au sol — récupère-la':'Ramasse la bombe';if(tt){g.font='600 13px system-ui';const w=g.measureText(tt).width+26;pill(W/2-w/2,MY0-14,w,28,14,'rgba(8,12,22,.7)');txt(tt,W/2,MY0+1,13)}}
