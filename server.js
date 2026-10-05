@@ -72,7 +72,7 @@ function leave(ws) {
 }
 
 // ---------- partie calculée par le serveur ----------
-// 60 calculs par seconde ; l'état est envoyé à tous les joueurs environ 20 fois par seconde.
+// 60 calculs par seconde ; l'état est envoyé à tous les joueurs environ 30 fois par seconde.
 function startGame(room) {
   const sendAll = msg => { const t = JSON.stringify(msg); room.players.forEach(x => { if (x.ws.readyState === 1) x.ws.send(t); }); };
   try { room.game = createGame(room.map, publicPlayers(room), sendAll); }
@@ -81,7 +81,7 @@ function startGame(room) {
   room.timer = setInterval(() => {
     const now = Date.now(), dt = Math.min(0.05, (now - last) / 1000); last = now;
     try { room.game.step(dt); } catch (e) { console.error('Erreur de simulation :', e); }
-    if (now - lastSend >= 48) { lastSend = now; try { sendAll({ type: 'state', state: room.game.snapshot() }); } catch (e) {} }
+    if (now - lastSend >= 32) {   /* etat envoye ~30 fois par seconde */ lastSend = now; try { sendAll({ type: 'state', state: room.game.snapshot() }); } catch (e) {} }
     if (room.game.state() === 'end') { endAt = endAt || now; if (now - endAt > 600000) { stopGame(room); rooms.delete(room.code); } /* salon gardé 10 min après la fin (pour recommencer) */ }
   }, 16);
 }
@@ -95,9 +95,9 @@ wss.on('connection', ws => {
   ws.budget = 0;
 
   ws.on('message', raw => {
-    // limite anti-abus : 120 messages par seconde maximum
+    // limite anti-abus : 150 messages par seconde maximum (commandes ~60/s)
     ws.budget++;
-    if (ws.budget > 120) return;
+    if (ws.budget > 150) return;
     let m;
     try { m = JSON.parse(raw); } catch { return; }
     const room = ws.room;
