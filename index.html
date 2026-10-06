@@ -1176,8 +1176,12 @@ function gaTarget(){const me=E&&E[localSlot];if(!me||!GA)return null;const d=Mat
  return{x:me.x+Math.cos(ang)*dist,y:me.y+Math.sin(ang)*dist}}
 function requestGren(){const t=grTarget();if(!t)return;GS.seq++;GS.x=Math.round(t.x);GS.y=Math.round(t.y)}
 // au debut de la manche, un joueur humain attaquant a 8 s pour aller chercher la bombe (sauf s'il part a l'oppose)
+// delai pour laisser le joueur prendre la bombe : 3 s d'office, puis seulement tant qu'il s'en approche vraiment (8 s au plus).
+// Un joueur qui part ailleurs ou reste plante ne bloque plus les bots.
 function bombGrace(){if(bomb.drop||bomb.car>=0||bomb.planted||!E)return false;const A=PLN&&PLN[atk];if(!A||A.t>8)return false;
- return E.some(m=>m.p&&m.alive&&m.team===atk&&Math.hypot(m.x-bomb.ix,m.y-bomb.iy)<750)}
+ return E.some(m=>{if(!(m.p&&m.alive&&m.team===atk))return false;const d=Math.hypot(m.x-bomb.ix,m.y-bomb.iy);if(d>750)return false;
+  if(m._bgT===undefined||T-m._bgT>.5||T<m._bgT){m._bgApp=m._bgD!==undefined&&m._bgD-d>15;m._bgD=d;m._bgT=T}
+  return A.t<3||d<90||m._bgApp})}
 const ATKH=[[],[]],DEFH=[[],[]];
 const WIN_PTS=7,MAX_ROUNDS=13;
 // statistiques de la partie (par place de joueur) : eliminations, morts, bombes posees, desamorcages, drapeaux captures
@@ -1251,7 +1255,7 @@ if(!at&&bomb.planted&&(!E.some(m=>m.team==atk&&m.alive)||bomb.t<13)){obj('dfd',[
   for(const m of bots){const d=bd(m);if(d<nd){nd=d;n=m}}
   const hum=(bomb.drop?T-(bomb.dropT||0)<4:PLN[atk].t<9.5)&&ms.find(m=>m.p&&bd(m)<Math.min(260,nd));                       // un humain tout proche : on le laisse la prendre
   const humanFirst=bombGrace();                   // au depart, un joueur humain a 3 s pour la prendre
-  if(n===e&&(hum||humanFirst)){obj('wb'+e.id,[[bomb.ix+(e.id%2?70:-70),bomb.iy+50]],'hold',[bomb.ix,bomb.iy]);return}   // on attend a cote de la bombe que le joueur la prenne
+  if(n===e&&(hum||humanFirst)){const sw=Math.sin(T*1.7+e.id)*40;obj('wb'+e.id+((T*1.7|0)%2),[[bomb.ix+(e.id%2?70:-70)+sw,bomb.iy+50]],'hold',[bomb.ix,bomb.iy]);return}   // on attend a cote de la bombe que le joueur la prenne
   if(n===e&&!hum&&!humanFirst){
    if(lone&&e.gren>0){const gd=fr.filter(k=>T-k.t<3&&Math.hypot(k.x-bomb.ix,k.y-bomb.iy)<500).sort((a,b)=>b.t-a.t)[0];const dg=gd&&Math.hypot(gd.x-e.x,gd.y-e.y);if(gd&&dg>90&&dg<GR_MAX+20)throwGren(e,gd.x,gd.y)}
    obj('pick'+bomb.drop,[[bomb.ix,bomb.iy]],'go');return}
