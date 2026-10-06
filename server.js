@@ -1,4 +1,3 @@
-```js
 // Serveur des parties privées (Detonate)
 // Le serveur est autoritaire : il fait tourner la simulation de la partie.
 // Les joueurs envoient leurs commandes et reçoivent régulièrement l'état de la partie.
@@ -14,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
 const { createGame } = require('./game_sim');
+const { performance } = require('perf_hooks');
 
 const PORT = process.env.PORT || 3000;
 const INDEX = path.join(__dirname, 'index.html');
@@ -231,69 +231,52 @@ function startGame(room) {
     return;
   }
 
-  let last = Date.now();
-  let lastSend = 0;
+  // Boucle à pas fixe, calée sur l'horloge haute précision :
+  // - la simulation avance toujours de 1/60 s par pas (rattrapage si le serveur a pris du retard,
+  //   au lieu de ralentir la partie) ;
+  // - un snapshot exactement tous les 2 pas (30 Hz réguliers), au lieu d'un envoi
+  //   « dès que 33 ms sont passées » qui tombait une fois sur deux à 48 ms avec une boucle de 16 ms.
+  const STEP = 1000 / 60;
+  const t0 = performance.now();
+  let n = 0;          // nombre de pas simulés
   let endAt = 0;
+  let lagMax = 0;     // plus gros retard de la boucle sur la dernière seconde (diagnostic)
+  let lagShown = 0, lagReset = t0;
 
-  room.timer = setInterval(() => {
+  const tick = () => {
+    if (!room.game) return;
+    const now = performance.now();
+    const due = Math.floor((now - t0) / STEP);       // nombre de pas qui devraient être faits
+    lagMax = Math.max(lagMax, now - (t0 + (n + 1) * STEP));   // retard par rapport à l'heure prévue du pas
+    if (now - lagReset > 1000) { lagShown = Math.round(lagMax); lagMax = 0; lagReset = now; }
 
-    const now = Date.now();
+    let steps = 0, sendNow = false;
+    while (n < due && steps < 6) {                   // au plus 6 pas d'un coup (100 ms de rattrapage)
+      try { room.game.step(1 / 60); } catch (e) { console.error('Erreur de simulation :', e); }
+      n++; steps++;
+      if (n % 2 === 0) sendNow = true;               // 30 Hz
+    }
+    if (n < due) n = due;                            // retard énorme (serveur gelé) : on repart à l'heure
 
-    const dt = Math.min(
-      0.05,
-      (now - last) / 1000
-    );
-
-    last = now;
-
-    // Simulation serveur à environ 60 Hz
-    try {
-      room.game.step(dt);
-    } catch (e) {
-      console.error(
-        'Erreur de simulation :',
-        e
-      );
+    if (sendNow) {
+      try { const st = room.game.snapshot(); st.sl = lagShown; sendAll({ type: 'state', state: st }); }
+      catch (e) { console.error('Erreur lors de l’envoi du snapshot :', e); }
     }
 
-    // Snapshot réseau à environ 30 Hz
-    // 1000 / 33 ≈ 30,3 snapshots par seconde
-    if (now - lastSend >= 33) {
-
-      lastSend = now;
-
-      try {
-        sendAll({
-          type: 'state',
-          state: room.game.snapshot()
-        });
-      } catch (e) {
-        console.error(
-          'Erreur lors de l’envoi du snapshot :',
-          e
-        );
-      }
-    }
-
-    // Conserver le salon 10 minutes après la fin
-    // afin de permettre un rematch.
+    // Conserver le salon 10 minutes après la fin, pour pouvoir recommencer
     if (room.game.state() === 'end') {
-
       endAt = endAt || now;
-
-      if (now - endAt > 600000) {
-        stopGame(room);
-        rooms.delete(room.code);
-      }
+      if (now - endAt > 600000) { stopGame(room); rooms.delete(room.code); return; }
     }
-
-  }, 16);
+    room.timer = setTimeout(tick, Math.max(0, t0 + (n + 1) * STEP - performance.now()));
+  };
+  room.timer = setTimeout(tick, STEP);
 }
 
 
 function stopGame(room) {
   if (room.timer) {
-    clearInterval(room.timer);
+    clearTimeout(room.timer);
   }
 
   room.timer = null;
@@ -720,4 +703,3 @@ server.listen(PORT, () => {
     'Serveur prêt sur le port ' + PORT
   );
 });
-```
