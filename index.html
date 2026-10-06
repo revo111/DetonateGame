@@ -1673,9 +1673,9 @@ function drawMiniDynamic(){
   const sc=R/11;g.strokeStyle='#f4f2ec';g.lineWidth=1.8*sc;g.beginPath();g.moveTo(fx-3.5*sc,fy+6.5*sc);g.lineTo(fx-3.5*sc,fy-6.5*sc);g.stroke();
   g.fillStyle=cap?'#'+TD(FLG.cap).hex.toString(16).padStart(6,'0'):'#e2d4b6';g.beginPath();g.moveTo(fx-3*sc,fy-6.5*sc);g.quadraticCurveTo(fx+2*sc,fy-7.5*sc,fx+7*sc,fy-3.5*sc);g.quadraticCurveTo(fx+2*sc,fy-1.5*sc,fx-3*sc,fy-.5*sc);g.closePath();g.fill();if(cap){g.lineWidth=1.2*sc;g.strokeStyle=col;g.stroke()}}
  g.textBaseline='alphabetic';
- // NOTRE position : point jaune vif bien plus gros, contour sombre, halo qui pulse et petite fleche de visee (dessine par-dessus tout)
+ // NOTRE position : point jaune vif bien plus gros, contour sombre et petite fleche de visee (dessine par-dessus tout)
  {const me=E&&E[localSlot];if(me&&me.alive&&!(typeof isSpectating==='function'&&isSpectating())){const mx=FLIP?ox+MMW-me.x*MM:ox+me.x*MM,my=FLIP?oy+MMH-me.y*MM:oy+me.y*MM,nw=performance.now(),k=.5+.5*Math.sin(nw/260),r=MMW>150?5.5:4.6,a=(me.ang||0)+(FLIP?Math.PI:0);
-  g.save();g.globalAlpha=.30+.30*k;g.fillStyle='#ffe14a';g.beginPath();g.arc(mx,my,r+4+k*4,0,7);g.fill();g.globalAlpha=1;
+  g.save();
   g.fillStyle='#ffe14a';g.strokeStyle='#0b0f18';g.lineWidth=1.2;g.beginPath();g.moveTo(mx+Math.cos(a)*(r+5),my+Math.sin(a)*(r+5));g.lineTo(mx+Math.cos(a+.55)*(r-.5),my+Math.sin(a+.55)*(r-.5));g.lineTo(mx+Math.cos(a-.55)*(r-.5),my+Math.sin(a-.55)*(r-.5));g.closePath();g.fill();g.stroke();g.lineWidth=2;
   g.beginPath();g.arc(mx,my,r,0,7);g.fill();g.stroke();g.fillStyle='#0b0f18';g.beginPath();g.arc(mx,my,r*.35,0,7);g.fill();g.restore()}}
 }
