@@ -680,6 +680,25 @@ function tickFount(now){const t=now/1000;for(const f of FOUNTS){f.ct.offset.y=(t
  for(const d of f.drops){const u=(t/0.85+d.ph)%1,r=24+(d.r2-24)*u,y=47+14*u-38*u*u;d.m.position.set(Math.cos(d.a)*r,Math.max(13.8,y),Math.sin(d.a)*r)}
  for(const q of f.rings){const u=(t/1.1+q.ph)%1,r=f.R*.58;q.m.position.x=Math.cos(q.a)*r;q.m.position.z=Math.sin(q.a)*r;q.m.scale.setScalar(1+u*5);q.m.material.opacity=.55*(1-u)}}}
 // fusion de geometries (moins d'objets a dessiner : un palmier = 4 objets au lieu de 20)
+// ---------- fluidite : regroupement des objets fixes du decor ----------
+// Des centaines de petits objets (murs, caisses, roches, toits...) coutaient chacun un "appel de dessin" a la carte graphique.
+// On les fusionne par materiau et par zone de la carte (pour garder l'elimination des zones hors ecran) :
+// meme rendu, beaucoup moins d'appels de dessin -> plus d'images par seconde, surtout sur telephone.
+function mergeStatic(root,keep){root.updateMatrixWorld(true);const B=new Map(),rm=[],CH=900,tmp=new THREE.Vector3();
+ root.traverse(o=>{if(!o.isMesh||o.isInstancedMesh||keep.has(o)||!o.visible)return;let p=o.parent;while(p&&p!==root){if(keep.has(p))return;p=p.parent}
+  const mats=Array.isArray(o.material)?o.material:[o.material];if(mats.some(m=>!m||m.transparent||m.alphaTest>0))return;
+  const g0=o.geometry;if(!g0||!g0.attributes||!g0.attributes.position||!g0.attributes.normal||!g0.attributes.uv)return;
+  o.getWorldPosition(tmp);const zone=Math.floor(tmp.x/CH)+'_'+Math.floor(tmp.z/CH);
+  let g=g0.index?g0.toNonIndexed():g0.clone();g.applyMatrix4(o.matrixWorld);
+  const groups=Array.isArray(o.material)&&g.groups.length?g.groups:[{start:0,count:g.attributes.position.count,materialIndex:0}];
+  for(const gr of groups){const m=mats[gr.materialIndex||0];if(!m)continue;const k=m.uuid+'|'+zone;let b=B.get(k);if(!b)B.set(k,b={m,parts:[]});b.parts.push([g,gr.start,gr.count])}
+  rm.push(o)});
+ let made=0;const out=[];for(const{m,parts}of B.values()){let n=0;for(const[,,c]of parts)n+=c;if(!n)continue;const hasC=parts.every(([g])=>g.attributes.color);
+  const pos=new Float32Array(n*3),nor=new Float32Array(n*3),uv=new Float32Array(n*2),col=hasC?new Float32Array(n*3):null;let o=0;
+  for(const[g,st,c]of parts){pos.set(g.attributes.position.array.subarray(st*3,(st+c)*3),o*3);nor.set(g.attributes.normal.array.subarray(st*3,(st+c)*3),o*3);uv.set(g.attributes.uv.array.subarray(st*2,(st+c)*2),o*2);if(col)col.set(g.attributes.color.array.subarray(st*3,(st+c)*3),o*3);o+=c}
+  const r=new THREE.BufferGeometry();r.setAttribute('position',new THREE.BufferAttribute(pos,3));r.setAttribute('normal',new THREE.BufferAttribute(nor,3));r.setAttribute('uv',new THREE.BufferAttribute(uv,2));if(col)r.setAttribute('color',new THREE.BufferAttribute(col,3));
+  r.computeBoundingSphere();const me=new THREE.Mesh(r,m);me.matrixAutoUpdate=false;out.push(me);made++}
+ for(const me of out)root.add(me);for(const o of rm)if(o.parent)o.parent.remove(o);return{avant:rm.length,apres:made}}
 function mergeG(list){let n=0;const parts=list.map(([g0,m])=>{const g=g0.index?g0.toNonIndexed():g0.clone();g.applyMatrix4(m);n+=g.attributes.position.count;return g});
  const pos=new Float32Array(n*3),nor=new Float32Array(n*3),uv=new Float32Array(n*2);let o=0;
  for(const g of parts){pos.set(g.attributes.position.array,o*3);nor.set(g.attributes.normal.array,o*3);uv.set(g.attributes.uv.array,o*2);o+=g.attributes.position.count}
@@ -857,7 +876,7 @@ function drawFlag(now){if(!FZ)return;const col=t=>t<0?0xf4f2ec:TD(t).hex;
  FZ.cg.rotation.y=.28*Math.sin(now/1100)-.3;const pa=FZ.cloth.geometry.attributes.position;
  // ondulation : vague qui court le long du tissu, plus ample vers le bord libre, avec un leger affaissement
  for(let v=0;v<pa.count;v++){const X=pa.getX(v),Y=pa.getY(v),f=(X+34)/68;pa.setZ(v,(Math.sin(X/8-now/150)*3.2+Math.sin(X/5+Y/9-now/110)*1.1)*f-f*f*4)}pa.needsUpdate=true;FZ.cloth.geometry.computeVertexNormals()}
-let FOUNTS=[],BAGS=[],PALMV=[];
+let FOUNTS=[],BAGS=[],PALMV=[],MERGED=null;
 function buildBags(){if(!BAGS.length)return;const list=[];
  for(const[cx,cz,Lw,th,a]of BAGS){const ca=Math.cos(a),sa=Math.sin(a),across=Math.max(1,Math.round(th/14));
   for(let lay=0;lay<3;lay++){const nb=Math.max(2,Math.round(Lw/24))-(lay===2?1:0),bl=Lw/Math.max(2,Math.round(Lw/24));
@@ -1055,7 +1074,7 @@ function loadMap(id){if(!MAPS[id])id='nuit';if(MAPID===id&&WORLD)return;MAPID=id
  if(LP.length&&!CUR.lpFixed){CUR.lpFixed=1;CUR.LP=LP=LP.map(([x,y])=>{if(!hit(x,y,14)&&!hit(x+16,y,8))return[x,y];
   for(let r=20;r<=200;r+=10)for(let k=0;k<16;k++){const a=k/16*6.283,nx=Math.round(x+Math.cos(a)*r),ny=Math.round(y+Math.sin(a)*r);if(!hit(nx,ny,14)&&!hit(nx+16,ny,8))return[nx,ny]}return[x,y]})}if(CUR.STG){STG=CUR.STG;HOLD=CUR.HOLD}else{autoPoints();CUR.STG=STG;CUR.HOLD=HOLD}
  if(WORLD){sc.remove(WORLD);WORLD.traverse(o=>{if(o.geometry&&!o.geometry.userData.keep&&o.geometry.dispose&&o.geometry.type!=='BoxGeometry'&&o.geometry.type!=='PlaneGeometry')o.geometry.dispose()})}
- WORLD=new THREE.Group();sc.add(WORLD);buildWorld();buildBags();buildFlag();buildMini();CP.i=0;lampT=0;
+ WORLD=new THREE.Group();sc.add(WORLD);buildWorld();buildBags();{const keep=new Set();for(const p of PALMV)for(const[me]of p.meshes)keep.add(me);for(const f of FOUNTS){for(const d of f.drops)keep.add(d.m);for(const q of f.rings)keep.add(q.m)}if(!/[?&]nomerge/.test(location.search||''))try{MERGED=mergeStatic(WORLD,keep);console.log('decor regroupe :',MERGED.avant,'objets ->',MERGED.apres,'appels de dessin')}catch(e){console.error('regroupement du decor impossible',e)}}buildFlag();buildMini();CP.i=0;lampT=0;
  const D=CUR.theme==='desert';
  HEMI.color.setHex(D?0xfff0de:0x7d93c4);HEMI.groundColor.setHex(D?0x7a5a3c:0x171c2a);HEMI.intensity=D?.78:.68;
  moon.color.setHex(D?0xffe2bc:0x9fb6f0);moon.intensity=D?.92:.46;moon.position.set(D?-700:-300,D?650:800,D?-350:200);
