@@ -1400,6 +1400,7 @@ const NETQ={sent:[],ok:new Set(),rtt:[],jit:0,ptr:null};   // pertes : pings san
 function applyNetState(s){
  if(!s)return;if(s.hitOnly){const add=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));HITEV=HITEV.concat(add).slice(-40);drawHitFxEvents();return}if(s.fl){FLG={p:s.fl[0],tm:s.fl[1],cap:s.fl[2],fast:!!s.fl[3],rt:s.fl[3]?1:-1};FB=s.fb||[]}if(s.ss)STATS=s.ss.map(q=>({k:q[0],d:q[1],p:q[2],df:q[3],fl:q[4]}));if(s.hv)HITEV=s.hv.map(q=>({u:q[0],k:q[1],v:q[2],x:q[3],y:q[4],sx:q[5],sy:q[6],kill:q[7],g:q[8]||0}));if(s.map&&s.map!==MAPID){loadMap(s.map);newRound();cRound=-1}if(!E||E.length!==2*TS)newRound();
  // horloge : ecart entre notre horloge et le temps de jeu de l'hote (on garde le plus petit = le moins de retard), pour l'interpolation
+ if(s.sl!==undefined)NETQ.sl=s.sl;   // retard de la boucle du serveur (diagnostic)
  {const tr=performance.now()/1000-s.T;if(s.st&&s.st.s==='live'){if(NETQ.ptr!==null)NETQ.jit+=(Math.abs(tr-NETQ.ptr)*1000-NETQ.jit)/16;NETQ.ptr=tr}else NETQ.ptr=null}
  {const now=performance.now()/1000,o=now-s.T;(NETD.oh||(NETD.oh=[])).push([now,o]);while(NETD.oh.length&&now-NETD.oh[0][0]>2)NETD.oh.shift();NETD.ofs=Math.min(...NETD.oh.map(q=>q[1]));NETD.arr.push(now);while(NETD.arr.length&&now-NETD.arr[0]>2)NETD.arr.shift()}
  if(s.round!==cRound){cRound=s.round;B.forEach(b=>b.m.visible=false);B=[];XG.visible=false;EX=null;cBoom=0;lastU=0;E.forEach(e=>e.fresh=1)}
@@ -1839,8 +1840,8 @@ ren.render(sc,cam);
 g.clearRect(0,0,W,H);if(exHud>0){g.fillStyle='rgba(255,236,190,'+(exHud*.55).toFixed(3)+')';g.fillRect(0,0,W,H)}{const nw=performance.now();NETD.fr.push(nw);while(NETD.fr.length&&nw-NETD.fr[0]>1000)NETD.fr.shift()}
 if(netMode&&netStarted&&!isHost&&NETD.arr.length&&performance.now()/1000-NETD.arr[NETD.arr.length-1]>.6&&st.s!=='end'){pill(W/2-90,H*.3-14,180,28,14,'rgba(140,30,20,.85)');txt('Connexion instable…',W/2,H*.3,12,'#fff',null,700)}
 if(netMode&&netStarted&&!isHost){const nw=performance.now(),old=NETQ.sent.filter(x=>nw-x>1500),lost=old.filter(x=>!NETQ.ok.has(x)).length,loss=old.length?Math.round(lost/old.length*100):0;
- const jit=Math.round(NETQ.jit),bad=netPing>150||jit>30||loss>2;g.save();g.font='600 10px system-ui';g.textAlign='left';g.textBaseline='alphabetic';
- const t1='Ping '+netPing+' ms   Jitter '+jit+' ms   Pertes '+loss+' %',tw=g.measureText(t1).width,x=10+(typeof env==='undefined'?0:0),y=H-8;
+ const jit=Math.round(NETQ.jit),bad=netPing>150||jit>30||loss>2||(NETQ.sl||0)>40;g.save();g.font='600 10px system-ui';g.textAlign='left';g.textBaseline='alphabetic';
+ const t1='Ping '+netPing+' ms   Jitter '+jit+' ms   Pertes '+loss+' %'+(NETQ.sl!==undefined?'   Serveur '+NETQ.sl+' ms':''),tw=g.measureText(t1).width,x=10+(typeof env==='undefined'?0:0),y=H-8;
  g.fillStyle='rgba(6,10,18,.45)';g.fillRect(x-5,y-11,tw+10,15);g.fillStyle=bad?'rgba(255,160,120,.95)':'rgba(255,255,255,.62)';g.fillText(t1,x,y);g.restore()}
 drawMiniDynamic();
 const hm=E.find(e=>e.id===localSlot)||E[0],cl=Math.max(0,Math.ceil(st.clock)),narrow=W<640||W/2-118<MMW+22;
