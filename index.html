@@ -1138,7 +1138,7 @@ function hurt(e,dmg,kid,isG,sx,sy){if(!e.alive)return;e.hp-=dmg;e.rev=3;const sr
  if(!netMode||isHost)drawHitFxEvents();if(e.hp<=0){stat(e.id).d++;if(src&&src.team!==e.team)stat(kid).k++}if(e.hp<=0){e.alive=0;e.body=e.team==0||netMode||T-e.vt<.7;KL.push({k:kid,v:e.id,t:T,g:isG?1:0});
  E.forEach(m=>{m.tk=0;if(m.chase&&Math.hypot(m.chase.x-e.x,m.chase.y-e.y)<120)m.chase=null});if(bomb.car==e.id){bomb.car=-1;bomb.ix=e.x;bomb.iy=e.y;bomb.drop=1;bomb.dropT=T}if(e.team==atk)HEAT[nsite(e)]++}}
 function throwGren(e,tx,ty){if(!e.alive||!(e.gren>0)||st.s!=='live'||!isFinite(tx)||!isFinite(ty))return;
- if(!e.p&&E.some(m=>m.alive&&m.team===e.team&&Math.hypot(m.x-tx,m.y-ty)<GR_R+40)){e.gcd=T+1;return}   // un allie trop pres de la cible : le bot renonce
+ if(!e.p&&E.some(m=>m.alive&&m.team===e.team&&Math.hypot(m.x-tx,m.y-ty)<GR_R+40)){e.gcd=T+1;return}   // (le bot lui-meme fait partie de son equipe : il ne lance pas trop pres de lui)   // un allie trop pres de la cible : le bot renonce
  let dx=tx-e.x,dy=ty-e.y;const d=Math.hypot(dx,dy)||1;dx/=d;dy/=d;
  const dd=Math.max(GR_MIN,Math.min(GR_MAX,d));tx=e.x+dx*dd;ty=e.y+dy*dd;
  // point de chute : on recule s'il tombe dans un obstacle ou hors de la carte
@@ -1152,7 +1152,7 @@ function updGren(dt){for(const g0 of GR){g0.t+=dt;
    // elle roule encore un peu puis s'arrete (sans traverser les murs)
    if(g0.rv>1){const nx=g0.x+g0.rx*g0.rv*dt,ny=g0.y+g0.ry*g0.rv*dt;if(!hit(nx,ny,6)){g0.x=nx;g0.y=ny}else g0.rv=0;g0.rv*=Math.pow(.02,dt)}}
   if(g0.t>=g0.T+GR_FUSE&&!g0.done){g0.done=1;const X=g0.x,Y=g0.y;GRX.push({u:g0.u,x:Math.round(X),y:Math.round(Y),t:T});if(GRX.length>8)GRX.shift();fxBoom(X,Y);
-   for(const e of E){if(!e.alive||e.id===g0.id)continue;if(Math.hypot(e.x-X,e.y-Y)<GR_R&&los({x:X,y:Y},e))hurt(e,GR_DMG,g0.id,1,X,Y)}   // allies et ennemis : memes degats
+   for(const e of E){if(!e.alive)continue;if(Math.hypot(e.x-X,e.y-Y)<GR_R&&los({x:X,y:Y},e))hurt(e,GR_DMG,g0.id,1,X,Y)}   // tout le monde dans la zone : ennemis, allies et le lanceur lui-meme
    for(const e of E)if(e.team!==g0.team&&e.alive)K[e.team][g0.id]={x:g0.sx,y:g0.sy,t:T,hear:1}}}
  GR=GR.filter(g0=>{if(g0.done){grHide(g0);return false}return true})}
 function grHide(g0){const m=g0.m;if(!m)return;m.g.visible=m.s.visible=m.zf.visible=m.zr.visible=m.zc.visible=false}
@@ -1618,7 +1618,7 @@ else{
    if(e.wdN>=2){e.wdN=0;for(let k=0;k<12;k++){const a=Math.random()*6.28,r=160+Math.random()*200,q=[e.x+Math.cos(a)*r,e.y+Math.sin(a)*r];
      if(q[0]>60&&q[1]>60&&q[0]<WW-60&&q[1]<WH-60&&!hit(q[0],q[1],16)){e.tag='wd'+(T|0);e.path=[q];e.pi=0;e.mode='go';e.tk=1.4;e.hslot=(e.hslot||0)+1;e.chase=null;break}}}}else e.wdN=0}
  // esquive : une grenade ennemie va exploser tout pres -> on s'eloigne du point d'impact
- for(const g0 of GR){if(g0.id===e.id)continue;const gx_=g0.land?g0.x:g0.tx,gy_=g0.land?g0.y:g0.ty,dx=e.x-gx_,dy=e.y-gy_,d=Math.hypot(dx,dy);
+ for(const g0 of GR){const gx_=g0.land?g0.x:g0.tx,gy_=g0.land?g0.y:g0.ty,dx=e.x-gx_,dy=e.y-gy_,d=Math.hypot(dx,dy);
   // une grenade au sol se voit : l'esquive devient tres probable ; en vol, seulement une fois sur deux
   if(d<GR_R+30&&g0.t>g0.T*.6&&(g0.land?((g0.sv2=g0.sv2||{})[e.id]??(g0.sv2[e.id]=Math.random()<.65)):((g0.sv=g0.sv||{})[e.id]??(g0.sv[e.id]=Math.random()<.5)))){const a=Math.atan2(dy,dx);let best=null;for(const da of[0,.6,-.6,1.2,-1.2]){const ax=Math.cos(a+da),ay=Math.sin(a+da);if(!hit(e.x+ax*30,e.y+ay*30,12)){best=[ax,ay];break}}if(best){mx=best[0];my=best[1]}break}}
  let df=e.want-e.ang;df=Math.atan2(Math.sin(df),Math.cos(df));e.ang+=Math.max(-13*dt,Math.min(13*dt,df))}
