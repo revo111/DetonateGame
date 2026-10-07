@@ -45,9 +45,16 @@ canvas{position:fixed;left:0;top:0}#h{pointer-events:none}
  #rel{right:calc(16px + 2vw + env(safe-area-inset-right,0px));top:auto;bottom:calc(30% + env(safe-area-inset-bottom,0px))}
  #gre{right:calc(16px + 2vw + 74px + env(safe-area-inset-right,0px));top:auto;bottom:calc(30% + 5px + env(safe-area-inset-bottom,0px))}
 }
+
+/* choix de la langue (masque dans le salon : changer de langue recharge la page) */
+#menu:has(#lobby:not(.hidden)) #langSel{display:none}
+#langSel{display:flex;gap:8px;justify-content:center;margin:2px 0 14px}
+#langSel button{padding:6px 12px;border-radius:999px;border:1px solid #ffffff2a;background:#ffffff10;color:#ffffffcc;font:700 12px system-ui;cursor:pointer}
+#langSel button.on{background:#ffffff2e;color:#fff;border-color:#ffffff66}
 </style></head><body>
 <div id="menu"><div class="panel">
 <h1>DETONATE</h1><div class="sub">3D Tactical Shooter</div>
+<div id="langSel"><button data-lang="fr">🇫🇷 Français</button><button data-lang="en">🇺🇸 English</button></div>
 <div id="mapPick"><div class="small" style="margin-bottom:6px">CARTE</div><div class="mapRow"><button class="mapBtn sel" data-map="nuit">🌙 NUIT</button><button class="mapBtn" data-map="desert">🏜️ DÉSERT</button></div></div><div id="mainMenu"><button class="menuBtn" id="aiBtn">🤖 CONTRE L'IA</button><button class="menuBtn" id="privateBtn">🌐 PARTIE PRIVÉE</button></div>
 <div id="privateMenu" class="hidden"><input id="nameInput" class="menuInput" maxlength="14" placeholder="TON PSEUDO"><button class="menuBtn" id="createBtn">CRÉER UNE PARTIE</button><input id="codeInput" class="menuInput" maxlength="5" placeholder="CODE DE LA PARTIE"><button class="menuBtn" id="joinBtn">REJOINDRE</button><button class="menuBtn" id="backBtn">← RETOUR</button></div>
 <div id="lobby" class="hidden"><div class="small">CODE DE LA PARTIE</div><div id="roomCode">-----</div><button class="menuBtn" id="copyBtn">COPIER LE CODE</button><div id="players"></div><div id="menuMsg"></div><button class="menuBtn secondary" id="teamBtn">CHANGER D’ÉQUIPE</button><button class="menuBtn hidden" id="startBtn">LANCER LA PARTIE</button><button class="menuBtn" id="leaveBtn">QUITTER</button></div>
@@ -59,6 +66,69 @@ canvas{position:fixed;left:0;top:0}#h{pointer-events:none}
 <div id="quitBox"><div class="qpanel"><div class="qt">Quitter la partie ?</div><div class="qs" id="quitSub">Ta progression dans cette partie sera perdue.</div><div class="qb"><button id="quitNo">Continuer</button><button id="quitYes">Quitter</button></div></div></div><div id="fsTip"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// ---------- langues : français (par défaut) ou anglais américain ----------
+// Tout le texte affiché (menu, salon, interface en jeu, messages, écran de fin) passe par TR().
+// Le jeu est écrit en français ; TR() traduit en anglais si la langue choisie est 'en'.
+var LANG=(function(){try{return localStorage.getItem('detonate_lang')||'fr'}catch(e){return 'fr'}})();
+var I18N={
+'3D Tactical Shooter':'3D Tactical Shooter','CARTE':'MAP','🌙 NUIT':'🌙 NIGHT','🏜️ DÉSERT':'🏜️ DESERT',"🤖 CONTRE L'IA":'🤖 VS AI','🌐 PARTIE PRIVÉE':'🌐 PRIVATE GAME',
+'TON PSEUDO':'YOUR NAME','CRÉER UNE PARTIE':'CREATE GAME','CODE DE LA PARTIE':'GAME CODE','REJOINDRE':'JOIN','← RETOUR':'← BACK','COPIER LE CODE':'COPY CODE',
+'CHANGER D’ÉQUIPE':'SWITCH TEAM','LANCER LA PARTIE':'START GAME','QUITTER':'QUIT','Quitter':'Quit','Continuer':'Continue','Quitter la partie ?':'Quit the game?','Quitter la partie':'Quit game',
+'Ta progression dans cette partie sera perdue.':'Your progress in this game will be lost.','La partie en cours sera perdue.':'The current game will be lost.',
+'Tu quittes le salon : l’IA prendra ta place.':'You are leaving: the AI will take your place.','Plein écran':'Fullscreen','POSER':'PLANT','DÉSAMORCER':'DEFUSE','RECHARGE':'RELOADING',
+'Code copié.':'Code copied.','Partage ce code à tes amis.':'Share this code with your friends.','Entre un code à 5 caractères.':'Enter a 5-character code.',
+'Connexion… (un serveur gratuit peut mettre 30 s à se réveiller)':'Connecting… (a free server can take 30 s to wake up)','Serveur inaccessible.':'Server unreachable.',
+'Connexion perdue.':'Connection lost.','Connexion perdue — retour au menu…':'Connection lost — back to menu…',"La partie s'est arrêtée — retour au menu…":'The game has stopped — back to menu…',
+'En attente du lancement par l’hôte…':'Waiting for the host to start…','Les places libres seront jouées par l’IA. Lance quand tu veux.':'Empty slots will be played by the AI. Start whenever you want.',
+'Les places libres seront jouées par l’IA':'Empty slots will be played by the AI','Aucune partie avec ce code.':'No game with this code.','La partie a déjà commencé.':'The game has already started.',
+'NUIT · 3 contre 3':'NIGHT · 3 vs 3','DÉSERT · 4 contre 4':'DESERT · 4 vs 4','Désert — Oasis d’Al-Rimal':'Desert — Al-Rimal Oasis',
+'ÉQUIPE BLEUE':'BLUE TEAM','ÉQUIPE ROUGE':'RED TEAM','BLEUS':'BLUES','ROUGES':'REDS','BLEU':'BLUE','ROUGE':'RED','Vous':'You','IA':'AI','MOI':'ME','O':'W',
+'ATTAQUE':'ATTACK','DÉFENSE':'DEFENSE','Attaquants éliminés':'Attackers eliminated','Défenseurs éliminés':'Defenders eliminated','Bombe désamorcée':'Bomb defused','Explosion !':'Explosion!',
+'Temps écoulé':'Time is up','Bombe non posée':'Bomb not planted','Drapeau libre':'Flag free','Ramasse la bombe':'Pick up the bomb','Ton allié a pris la bombe':'Your teammate has the bomb',
+'Tu portes la bombe':'You have the bomb','Désamorçage':'Defusing','Pose':'Planting','BOOST':'BOOST','BOOST DU DRAPEAU OBTENU':'FLAG BOOST ACQUIRED','PV':'HP','cadence de tir':'fire rate',
+'vitesse de déplacement':'movement speed','Reprise rapide ×1,5':'Fast recapture ×1.5','remporte la manche':'wins the round','COMMANDES':'CONTROLS','Clic gauche':'Left click',
+'Espace':'Space','Souris':'Mouse','ou':'or','Se déplacer':'Move','Viser':'Aim','Tirer':'Shoot','Recharger':'Reload','Poser / désamorcer (maintenir)':'Plant / defuse (hold)',
+'Grenade : maintenir pour viser, relâcher':'Grenade: hold to aim, release','Revoir les commandes (maintenir)':'Show controls (hold)',
+'Stick gauche : bouger · Stick droit : viser et tirer':'Left stick: move · Right stick: aim & shoot','SPECTATEUR':'SPECTATING',
+'← → : changer de joueur · clic sur une case du score':'← → : switch player · click a scoreboard card','Élim.':'Kills','Morts':'Deaths','Bombes':'Plants','Désam.':'Defuses','Drap.':'Flags',
+'RECOMMENCER':'PLAY AGAIN','Le chef du salon relancera la partie':'The lobby leader will restart the game','Connexion instable…':'Unstable connection…',
+'Glisse pour viser · relâche pour lancer':'Drag to aim · release to throw','Relâche pour lancer':'Release to throw','Allié touché':'Teammate hit','(toi)':'(you)',
+'Touchez pour rejouer':'Tap to play again','Touchez pour revenir au menu':'Tap to return to the menu',
+"Sur iPhone : touche Partager puis « Sur l'écran d'accueil », et lance le jeu depuis l'icône pour jouer en plein écran.":"On iPhone: tap Share, then “Add to Home Screen”, and launch the game from the icon to play full screen."
+};
+var I18N_RX=[
+[/^Préparation… (.*)$/,function(m,a){return 'Get ready… '+TR(a)}],
+[/^Manche (\d+) \/ (\d+)  ·  (\d+) points pour gagner$/,'Round $1 / $2  ·  $3 points to win'],
+[/^(.*) — point (BLEU|ROUGE)$/,function(m,a,b){return TR(a)+' — '+(b==='BLEU'?'BLUE':'RED')+' scores'}],
+[/^Bombe posée en (\w)$/,'Bomb planted at $1'],[/^Bombe posée · site (\w)$/,'Bomb planted · site $1'],[/^Bombe désamorcée · site (\w)$/,'Bomb defused · site $1'],
+[/^Drapeau capturé par les (.*)$/,function(m,a){return 'Flag captured by the '+TR(a)}],[/^Drapeau : (.*) · bonus actif$/,function(m,a){return 'Flag: '+TR(a)+' · boost active'}],
+[/^Drapeau (\d+) s$/,'Flag $1 s'],[/^remporte la partie  ·  (.*)$/,'wins the game  ·  $1'],[/^Allié (\d+)$/,'Ally $1'],[/^Ennemi (\d+)$/,'Enemy $1'],
+[/^Ping (\d+) ms   Jitter (\d+) ms   Pertes (\d+) %(?:   Serveur (\d+) ms)?$/,function(m,a,b,c,d){return 'Ping '+a+' ms   Jitter '+b+' ms   Loss '+c+' %'+(d!==undefined?'   Server '+d+' ms':'')}],
+[/^★ (.*)  MVP$/,function(m,a){return '★ '+TR(a)+'  MVP'}],[/^(.*)  (\d+)$/,function(m,a,b){var t=TR(a);return t===a?m:t+'  '+b}],
+[/^(\d+) joueur\(s\) prêt\(s\) · le chef du salon relance la partie$/,'$1 player(s) ready · the lobby leader restarts the game'],
+[/^Prêt ! En attente de (.*)…$/,function(m,a){return 'Ready! Waiting for '+(a==='du chef du salon'?'the lobby leader':a)+'…'}],
+[/^Tu es le chef du salon : « Recommencer » relance pour tout le monde$/,'You are the lobby leader: “Play again” restarts for everyone'],
+[/^La partie est pleine \((\d+) joueurs\)\.$/,'The game is full ($1 players).'],[/^Code : (.*)$/,'Code: $1'],[/^CARTE : (.*)$/,function(m,a){return 'MAP: '+TR(a)}],[/^Erreur: (.*)$/,'Error: $1'],
+[/^(.*) \(toi\)$/,'$1 (you)'],[/^(.*) 👑 \(toi\)$/,'$1 👑 (you)']
+];
+var _TRC=new Map();
+function TR(s){if(LANG!=='en'||typeof s!=='string'||!s)return s;var r=_TRC.get(s);if(r!==undefined)return r;r=I18N[s];
+ if(r===undefined){r=s;for(var i=0;i<I18N_RX.length;i++){var q=I18N_RX[i];if(q[0].test(s)){r=s.replace(q[0],q[1]);break}}
+  if(r===s){var t=s.replace(/\bVous\b/g,'You').replace(/\bAllié\b/g,'Ally').replace(/\bEnnemi\b/g,'Enemy').replace(/ — point BLEU/,' — BLUE scores').replace(/ — point ROUGE/,' — RED scores');r=t}}
+ if(_TRC.size<4000)_TRC.set(s,r);return r}
+// tout ce qui est dessiné sur un canvas passe par TR()
+(function(){if(typeof CanvasRenderingContext2D==='undefined'||LANG!=='en')return;var P=CanvasRenderingContext2D.prototype,ft=P.fillText,st=P.strokeText,mt=P.measureText;
+ P.fillText=function(t){arguments[0]=TR(String(t));return ft.apply(this,arguments)};P.strokeText=function(t){arguments[0]=TR(String(t));return st.apply(this,arguments)};P.measureText=function(t){return mt.call(this,TR(String(t)))}})();
+// et tout le texte de la page (menu, salon, boutons, messages), y compris celui ajouté plus tard
+function trDOM(root){if(LANG!=='en'||!root||typeof document==='undefined'||!document.createTreeWalker)return;var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),n;
+ while((n=w.nextNode())){var v=n.nodeValue,k=v.trim();if(!k)continue;var t=TR(k);if(t!==k)n.nodeValue=v.replace(k,t)}
+ if(root.querySelectorAll)root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(function(e){['placeholder','title','aria-label'].forEach(function(a){var v=e.getAttribute(a);if(v){var t=TR(v);if(t!==v)e.setAttribute(a,t)}})})}
+if(typeof document!=='undefined'&&document.addEventListener&&typeof MutationObserver!=='undefined'){
+ var _go=function(){trDOM(document.body);if(LANG==='en')new MutationObserver(function(ms){ms.forEach(function(m){if(m.type==='characterData'){var k=m.target.nodeValue.trim(),t=TR(k);if(k&&t!==k)m.target.nodeValue=m.target.nodeValue.replace(k,t)}else m.addedNodes.forEach(function(n){if(n.nodeType===3){var k=n.nodeValue.trim(),t=TR(k);if(k&&t!==k)n.nodeValue=n.nodeValue.replace(k,t)}else trDOM(n)})})}).observe(document.body,{childList:true,subtree:true,characterData:true});
+  document.documentElement.lang=LANG==='en'?'en':'fr'};
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_go);else _go()}
+
+
 const hud=document.getElementById('h'),g=hud.getContext('2d'),ab=document.getElementById('act'),rb=document.getElementById('rel'),gb_=document.getElementById('gre');let GA=null;
 gb_.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();try{gb_.setPointerCapture(e.pointerId)}catch(_){}GA={id:e.pointerId,sx:e.clientX,sy:e.clientY,dx:0,dy:0}});
 gb_.addEventListener('pointermove',e=>{if(!GA||e.pointerId!==GA.id)return;e.preventDefault();e.stopPropagation();GA.dx=e.clientX-GA.sx;GA.dy=e.clientY-GA.sy});
@@ -1473,6 +1543,7 @@ function netLoop(t){if(!netMode||!netStarted)return;
  if(!isHost&&t-lastNetSend>15){lastNetSend=t;sendNet({type:'input',input:netInput()})}   // commandes ~60 fois par seconde
  if(isHost&&t-lastNetState>50){lastNetState=t;sendNet({type:'state',state:netSnapshot()})}
  if(t-lastPing>1000){lastPing=t;const pt=performance.now();NETQ.sent.push(pt);if(NETQ.sent.length>30)NETQ.sent.shift();sendNet({type:'ping',t:pt})}}
+document.querySelectorAll('#langSel button').forEach(b=>{b.classList.toggle('on',b.dataset.lang===LANG);b.onclick=()=>{if(b.dataset.lang===LANG)return;try{localStorage.setItem('detonate_lang',b.dataset.lang)}catch(e){}location.reload()}});
 let mapChoice='nuit';
 document.querySelectorAll('.mapBtn').forEach(b=>b.onclick=()=>{mapChoice=b.dataset.map;document.querySelectorAll('.mapBtn').forEach(x=>x.classList.toggle('sel',x===b))});
 function soloNames(){return Array.from({length:2*TS},(_,i)=>i===0?'Vous':(i<TS?'Allié '+i:'Ennemi '+(i-TS+1)))}
