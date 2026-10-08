@@ -1953,7 +1953,7 @@ if(quitBtn&&quitBtn.addEventListener){const stop=e=>{e.stopPropagation()};['poin
  document.getElementById('quitYes').addEventListener('click',()=>{try{if(netMode)sendNet({type:'leave'})}catch(e){}setTimeout(()=>location.reload(),netMode?150:0)})}
 function pill(x,y,w,h,r,c){g.fillStyle=c;g.beginPath();if(g.roundRect)g.roundRect(x,y,w,h,r);else g.rect(x,y,w,h);g.fill()}
 // ---------- etincelles quand une balle touche du metal ----------
-let SPK=null,SPKF=null,lastTink=0;
+let SPK=null,SPKF=null,lastTink=0;const TINK_R=150;   // impacts audibles seulement tres pres du joueur
 function sparkInit(){SPK=[];SPKF=[];const g=new THREE.BoxGeometry(7,1.2,1.2);
  for(let i=0;i<90;i++){const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0xffd27a,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));m.visible=false;sc.add(m);SPK.push({m,t:0,life:0,vx:0,vy:0,vz:0})}
  const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),gr=x.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,250,220,1)');gr.addColorStop(.3,'rgba(255,200,90,.85)');gr.addColorStop(1,'rgba(255,140,40,0)');x.fillStyle=gr;x.fillRect(0,0,64,64);
@@ -1964,12 +1964,52 @@ function sparkAt(x,y,vx,vy){if(typeof localSlot!=='undefined'&&localSlot<0)retur
  for(let k=0;k<n;k++){const p=SPK.reduce((a,b)=>a.t>=a.life?a:(b.t>=b.life?b:(a.t/a.life>b.t/b.life?a:b)));const a=back+(Math.random()-.5)*2.4,v=160+Math.random()*260;
   p.t=0;p.life=.16+Math.random()*.22;p.vx=Math.cos(a)*v;p.vz=Math.sin(a)*v;p.vy=60+Math.random()*140;p.m.position.set(x,18+Math.random()*16,y);p.m.visible=true;p.m.material.opacity=1;p.m.material.color.setHex(Math.random()<.5?0xfff0b0:0xffb347)}
  const f=SPKF.reduce((a,b)=>a.t>b.t?a:b);f.t=0;f.m.position.set(x,24,y);f.m.visible=true;
- const now=performance.now();if(AC&&WS&&now-lastTink>60&&Math.hypot(x-CP.x,y-CP.y)<900){lastTink=now;const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.setValueAtTime(2600+Math.random()*1400,t);o.frequency.exponentialRampToValueAtTime(1200,t+.08);
-  g.gain.setValueAtTime(.035*Math.max(.2,1-Math.hypot(x-CP.x,y-CP.y)/900),t);g.gain.exponentialRampToValueAtTime(.0005,t+.09);o.connect(g);g.connect(WS);o.start(t);o.stop(t+.1)}}
+ }
 function tickSparks(dt){if(!SPK)return;for(const p of SPK){if(!p.m.visible)continue;p.t+=dt;if(p.t>=p.life){p.m.visible=false;continue}
   p.vy-=520*dt;p.m.position.x+=p.vx*dt;p.m.position.z+=p.vz*dt;p.m.position.y=Math.max(2,p.m.position.y+p.vy*dt);p.m.rotation.y=-Math.atan2(p.vz,p.vx);const f=p.t/p.life;p.m.material.opacity=1-f*f;p.m.scale.x=1.2-f*.7}
  for(const f of SPKF){if(!f.m.visible)continue;f.t+=dt;if(f.t>.09){f.m.visible=false;continue}const k=f.t/.09;f.m.scale.setScalar(26+k*20);f.m.material.opacity=1-k}}
-function bulletImpact(b){const t=hitType(b.x,b.y);if(t&&METAL[t]){const l=Math.hypot(b.vx,b.vy)||1;sparkAt(b.x-b.vx/l*3,b.y-b.vy/l*3,b.vx,b.vy)}}
+// ---------- sons d'impact de balles (audibles seulement tres pres du joueur) ----------
+// matiere de chaque type d'objet : m metal, b beton/pierre, w bois, s sable, t toile
+const IMPMAT={c:'m',v:'m',b:'m',d:'m',y:'m',q:'m',w:'b',j:'b',x:'b',r:'b',a:'b',h:'b',p:'w',k:'w',T:'w',e:'t',s:'s'};
+const IMP_R=110;let IMPN=null,lastImp=0;
+function impNz(o,t,dur,ft,f,Q,g,att,rate){const s=AC.createBufferSource(),fl=AC.createBiquadFilter(),ge=AC.createGain();s.buffer=IMPN;s.playbackRate.value=rate||(.85+Math.random()*.3);
+ fl.type=ft;fl.frequency.value=f;fl.Q.value=Q;ge.gain.setValueAtTime(.0001,t);ge.gain.linearRampToValueAtTime(g,t+(att||.002));ge.gain.exponentialRampToValueAtTime(.0001,t+dur);
+ s.connect(fl);fl.connect(ge);ge.connect(o);s.start(t,Math.random()*1.5);s.stop(t+dur+.02)}
+function impTone(o,t,type,f0,f1,dur,g){const s=AC.createOscillator(),ge=AC.createGain();s.type=type;s.frequency.setValueAtTime(f0,t);s.frequency.exponentialRampToValueAtTime(f1,t+dur);
+ ge.gain.setValueAtTime(.0001,t);ge.gain.linearRampToValueAtTime(g,t+.002);ge.gain.exponentialRampToValueAtTime(.0001,t+dur);s.connect(ge);ge.connect(o);s.start(t);s.stop(t+dur+.02)}
+// sifflement de ricochet
+function impRico(o,t,lw){const r=Math.random,a=lw?1300+r()*700:2400+r()*1800,d=.16+r()*.22,s=AC.createOscillator(),vb=AC.createOscillator(),vg=AC.createGain(),ge=AC.createGain();
+ s.type='sine';s.frequency.setValueAtTime(a,t);s.frequency.exponentialRampToValueAtTime(a*(.35+r()*.15),t+d);vb.frequency.value=28+r()*30;vg.gain.value=a*.025;vb.connect(vg);vg.connect(s.frequency);
+ ge.gain.setValueAtTime(.0001,t);ge.gain.linearRampToValueAtTime(.16,t+.015);ge.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(ge);ge.connect(o);s.start(t);vb.start(t);s.stop(t+d+.02);vb.stop(t+d+.02)}
+function impactSnd(ty,x,y){if(!AC||!WS||(typeof localSlot!=='undefined'&&localSlot<0))return;
+ const me=E&&E[localSlot],lx=me&&me.alive?me.x:CP.x,ly=me&&me.alive?me.y:CP.y,d=Math.hypot(x-lx,y-ly);if(d>IMP_R)return;const nw=performance.now();if(nw-lastImp<22)return;lastImp=nw;
+ try{if(!IMPN){IMPN=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate);const q=IMPN.getChannelData(0);for(let i=0;i<q.length;i++)q[i]=Math.random()*2-1}
+ const r=Math.random,t=AC.currentTime+.005,v=Math.pow(1-d/IMP_R,1.6);let o=AC.createGain();o.gain.value=v*.234;
+ if(AC.createStereoPanner){const pn=AC.createStereoPanner();pn.pan.value=Math.max(-.85,Math.min(.85,(x-lx)/IMP_R*(FLIP?-1:1)));o.connect(pn);pn.connect(WS)}else o.connect(WS);
+ const m=IMPMAT[ty]||'b';
+ if(m==='m'){   // metal : choc + modes de vibration de la tole excites par du bruit (pas de notes pures) + cliquetis, ricochet rare
+  // [freq. de base min,max, duree de resonance, poids du choc sourd, cliquetis]
+  const R={c:[150,230,.22,1,1],y:[120,190,.3,1,0],b:[210,320,.2,.8,0],v:[330,480,.12,.6,1],d:[300,430,.1,.5,1],q:[420,620,.26,.3,0]}[ty]||[300,450,.15,.5,0];
+  const f=R[0]+r()*(R[1]-R[0]),dc=R[2]*(.8+r()*.4);
+  const lo=AC.createBiquadFilter();lo.type='lowpass';lo.frequency.value=3200;lo.Q.value=.5;const mg=AC.createGain();mg.gain.value=3.2;lo.connect(mg);mg.connect(o);const o0=o;o=lo;
+  impNz(o,t,.012,'bandpass',1100+r()*600,.8,.9);                                   // claquement de l'impact
+  impNz(o,t,.08+r()*.04,'lowpass',180+r()*90,.9,1.4*R[3]);                          // choc sourd de la masse
+  [[1,1],[1.59,.8],[2.14,.6],[2.65,.45],[3.16,.3],[3.92,.2]].forEach(([k,a],i)=>    // modes de la tole
+   impNz(o,t,dc*(1-i*.11),'bandpass',f*k*(1+(r()-.5)*.08),18+r()*14,a*(3+r()*1.2),.001,1));
+  if(R[4])for(let k=2+(r()*3|0);k>0;k--)impNz(o,t+.015+r()*.06,.02+r()*.02,'bandpass',700+r()*900,4,.18+r()*.15);   // cliquetis de la tole
+  if(r()<.15)impRico(o,t+.012+r()*.02,1);o=o0} else if(m==='w'){   // bois : choc mat + resonance courte + echardes
+  impNz(o,t,.018,'highpass',1800+r()*800,.7,.45);impNz(o,t,.09+r()*.04,'bandpass',330+r()*240,2.6,.95);impTone(o,t,'triangle',210+r()*140,150+r()*40,.07+r()*.04,.3);
+  for(let k=2+(r()*3|0);k>0;k--)impNz(o,t+.008+r()*.06,.01+r()*.012,'highpass',3000+r()*2500,1,.12+r()*.12)}
+ else if(m==='s'){   // sacs de sable : impact sourd + sable projete
+  impNz(o,t,.12+r()*.05,'lowpass',420+r()*200,1,1);impTone(o,t,'sine',95+r()*30,48,.09,.35);impNz(o,t+.005,.22+r()*.12,'bandpass',3000+r()*1500,.8,.13,.02)}
+ else if(m==='t'){   // toile de tente : claquement etouffe
+  impNz(o,t,.06+r()*.03,'bandpass',800+r()*400,.8,.7);impNz(o,t,.012,'highpass',2500,.7,.25)}
+ else{   // beton / pierre / terre : craquement + corps + petits debris qui retombent, ricochet rare
+  impNz(o,t,.03,'highpass',2000+r()*1200,.7,.85);impNz(o,t,.07+r()*.04,'bandpass',650+r()*450,1.3,.75);impTone(o,t,'sine',150+r()*50,65,.06,.28);
+  for(let k=3+(r()*4|0);k>0;k--)impNz(o,t+.02+r()*.17,.012+r()*.01,'bandpass',2500+r()*3000,3,.08+r()*.14);
+  if(r()<.12)impRico(o,t+.01)}
+ }catch(x){}}
+function bulletImpact(b){const t=hitType(b.x,b.y),l=Math.hypot(b.vx,b.vy)||1,ix=b.x-b.vx/l*3,iy=b.y-b.vy/l*3;if(t&&METAL[t])sparkAt(ix,iy,b.vx,b.vy);impactSnd(t,ix,iy)}
 function draw(){tickSparks(Math.min(.05,gdt||.016));const mt=netMode&&E&&E[localSlot]?E[localSlot].team:0;MT=mt;{const me0=E[localSlot]||E[0];FLIP=me0&&spawnGroup(me0.team)===1?1:0}
 const me_=E.find(e=>e.id===localSlot),c=(me_&&me_.alive)?me_:(specTarget(mt)||E.find(e=>e.team==mt&&e.alive)||E[localSlot]||E[0]),anyB=E.some(e=>e.team==mt&&e.alive),now=performance.now();
 let fx=c.x,fy=c.y;if((st.s==='over'||st.s==='end')&&st.bs>=0){const q=SITES[st.bs];fx=q.x;fy=q.y}
