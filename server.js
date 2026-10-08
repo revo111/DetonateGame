@@ -53,6 +53,20 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify({ here: HERE, regions: list }));
   }
 
+  // Pre-requete du navigateur (jeu ouvert depuis GitHub Pages) : on autorise l'en-tete de routage Fly
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Allow-Headers': 'fly-force-region, fly-prefer-region', 'Access-Control-Max-Age': '600' });
+    return res.end();
+  }
+
+  // Reveil : le jeu appelle /wake avec l'en-tete « fly-force-region: cdg ». Le proxy Fly.io envoie
+  // la requete directement dans cette region et demarre la machine si elle etait arretee.
+  // La connexion WebSocket qui suit trouve donc une machine allumee.
+  if (url === '/wake') {
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' });
+    return res.end(JSON.stringify({ region: HERE, machine: process.env.FLY_MACHINE_ID || null }));
+  }
+
   // Diagnostic : https://playdetonate.fly.dev/where?region=cdg
   // Fly.io renvoie la demande vers la machine de cette region ; la reponse dit qui a repondu,
   // ou pourquoi Fly.io n'a pas pu joindre la machine.
