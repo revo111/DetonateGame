@@ -1,24 +1,39 @@
-# Configuration Fly.io du serveur Detonate
-# Nom de l application Fly.io : https://playdetonate.fly.dev
+# Configuration Fly.io du serveur Detonate — https://playdetonate.fly.dev
 app = "playdetonate"
-primary_region = "cdg"          # Paris : le plus proche pour des joueurs en France
+primary_region = "cdg"            # France (Paris)
+
+# Arrêt propre : le serveur reçoit SIGINT et prévient les joueurs avant de s'arrêter.
+kill_signal = "SIGINT"
+kill_timeout = "10s"
 
 [build]
   # construit l'image à partir du Dockerfile du dossier
 
 [env]
   PORT = "8080"
+  # Serveurs proposés dans le menu du jeu : une machine par région.
+  # Doit correspondre aux régions affichées par « fly status »
+  # (si ta machine de Californie est à Los Angeles, remplace sjc par lax).
+  REGIONS = "cdg,sjc,iad,sin"
 
 [http_service]
   internal_port = 8080
   force_https = true
-  # le serveur s'arrête quand plus personne n'est connecté (aucun coût de calcul),
-  # et redémarre tout seul à la première connexion (quelques secondes)
+
+  # ---------- arrêt / démarrage automatiques ----------
+  # « stop » : avec une seule machine par région, le proxy Fly.io n'arrête une machine
+  #   que si elle n'a AUCUNE connexion (charge 0). Chaque joueur dans un salon ou une partie
+  #   garde une connexion WebSocket ouverte : tant qu'un joueur est connecté, le serveur reste
+  #   allumé et la partie continue.
+  # « auto_start_machines » : une machine arrêtée redémarre toute seule à la première connexion
+  #   (le jeu retente automatiquement pendant les quelques secondes de démarrage).
   auto_stop_machines = "stop"
   auto_start_machines = true
+  # 0 = aucun serveur allumé quand personne ne joue (coût minimal).
+  # Mets 1 pour garder le serveur France (région principale) toujours allumé : connexion instantanée.
   min_machines_running = 0
 
-  # les parties sont gardées en mémoire : UNE seule machine doit recevoir tous les joueurs
+  # La charge est comptée en connexions.
   [http_service.concurrency]
     type = "connections"
     soft_limit = 200
