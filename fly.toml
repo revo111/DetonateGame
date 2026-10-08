@@ -1,37 +1,37 @@
-# Configuration Fly.io du serveur Detonate
-# Nom de l application Fly.io : https://playdetonate.fly.dev
-app = "playdetonate"
-primary_region = "cdg"          # Paris : le plus proche pour des joueurs en France
+# fly.toml app configuration file generated for playdetonate on 2026-10-08T05:01:07Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'playdetonate'
+primary_region = 'iad'
 
 [build]
-  # construit l'image à partir du Dockerfile du dossier
 
 [env]
-  PORT = "8080"
+  PORT = '8080'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  # le serveur s'arrête quand plus personne n'est connecté (aucun coût de calcul),
-  # et redémarre tout seul à la première connexion (quelques secondes)
-  auto_stop_machines = "stop"
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
 
-  # les parties sont gardées en mémoire : UNE seule machine doit recevoir tous les joueurs
   [http_service.concurrency]
-    type = "connections"
-    soft_limit = 200
+    type = 'connections'
     hard_limit = 250
+    soft_limit = 200
 
   [[http_service.checks]]
-    grace_period = "10s"
-    interval = "30s"
-    method = "GET"
-    path = "/health"
-    timeout = "5s"
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/health'
 
 [[vm]]
-  cpu_kind = "shared"
+  memory = '512mb'
+  cpu_kind = 'shared'
   cpus = 1
-  memory = "512mb"
+  memory_mb = 512
