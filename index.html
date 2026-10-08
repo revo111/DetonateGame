@@ -19,7 +19,7 @@ canvas{position:fixed;left:0;top:0}#h{pointer-events:none}
 .menuBtn{display:block;width:100%;padding:15px;margin:10px 0;border:1px solid #ffffff22;border-radius:11px;background:#1a2639;color:#fff;font:700 16px system-ui;cursor:pointer}.menuBtn:hover{background:#24344d}
 .menuInput{box-sizing:border-box;width:100%;padding:14px;border-radius:10px;border:1px solid #ffffff25;background:#0a1020;color:#fff;font:700 18px system-ui;text-align:center;text-transform:uppercase;margin:7px 0}
 #roomCode{font-size:32px;letter-spacing:7px;font-weight:900;margin:12px 0 20px}#players{margin:18px 0;text-align:left}.player{padding:9px 12px;margin:5px 0;border-radius:8px;background:#ffffff08}.blue{border-left:4px solid #4d8dff}.bo{border-left:4px solid #d8dde3;background:#1d1f2299!important}.vp{border-left:4px solid #9fc25a;background:#5a6b2e44!important}.red{border-left:4px solid #ff4d5c}.small{font-size:12px;opacity:.6}.danger{color:#ff7c7c}.ok{color:#76e59a}
-#mapPick{margin:4px 0 14px}.mapRow{display:flex;gap:8px}.mapBtn{flex:1;padding:11px 6px;border:1px solid #ffffff22;border-radius:10px;background:#141d2c;color:#cfd6e2;font:700 14px system-ui;cursor:pointer}.mapBtn.sel{background:#2a3a55;border-color:#9fb6f0;color:#fff}
+#mapPick{margin:4px 0 14px}.srvRow{display:grid;grid-template-columns:1fr 1fr;gap:6px}.srvBtn{padding:9px 6px;border:1px solid #ffffff22;border-radius:10px;background:#141d2c;color:#cfd6e2;font:700 13px system-ui;cursor:pointer}.srvBtn.sel{background:#2a3a55;border-color:#9fb6f0;color:#fff}.srvBtn small{display:block;font-weight:600;opacity:.6;font-size:11px;margin-top:2px}.mapRow{display:flex;gap:8px}.mapBtn{flex:1;padding:11px 6px;border:1px solid #ffffff22;border-radius:10px;background:#141d2c;color:#cfd6e2;font:700 14px system-ui;cursor:pointer}.mapBtn.sel{background:#2a3a55;border-color:#9fb6f0;color:#fff}
 #menuMsg{min-height:20px;margin:8px 0;font-size:13px;color:#ffc83c}.hidden{display:none!important}
 #fsBtn{position:fixed;left:calc(10px + env(safe-area-inset-left,0px));top:calc(122px + env(safe-area-inset-top,0px));width:34px;height:34px;border-radius:10px;border:1px solid #ffffff2a;background:#000a;color:#fff;opacity:.5;display:none;align-items:center;justify-content:center;z-index:55;padding:0;touch-action:none;-webkit-tap-highlight-color:transparent}#fsBtn:active{opacity:.9}#fsBtn svg{width:18px;height:18px}
 #fsTip{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:86vw;background:#0b1220ee;color:#fff;font:500 13px system-ui;padding:10px 14px;border-radius:10px;z-index:56;text-align:center;pointer-events:none;opacity:0;transition:opacity .3s}
@@ -56,7 +56,7 @@ canvas{position:fixed;left:0;top:0}#h{pointer-events:none}
 <h1>DETONATE</h1><div class="sub">3D Tactical Shooter</div>
 <div id="langSel"><button data-lang="fr">🇫🇷 Français</button><button data-lang="en">🇺🇸 English</button></div>
 <div id="mapPick"><div class="small" style="margin-bottom:6px">CARTE</div><div class="mapRow"><button class="mapBtn sel" data-map="nuit">🌙 NUIT</button><button class="mapBtn" data-map="desert">🏜️ DÉSERT</button></div></div><div id="mainMenu"><button class="menuBtn" id="aiBtn">🤖 CONTRE L'IA</button><button class="menuBtn" id="privateBtn">🌐 PARTIE PRIVÉE</button></div>
-<div id="privateMenu" class="hidden"><input id="nameInput" class="menuInput" maxlength="14" placeholder="TON PSEUDO"><button class="menuBtn" id="createBtn">CRÉER UNE PARTIE</button><input id="codeInput" class="menuInput" maxlength="5" placeholder="CODE DE LA PARTIE"><button class="menuBtn" id="joinBtn">REJOINDRE</button><button class="menuBtn" id="backBtn">← RETOUR</button></div>
+<div id="privateMenu" class="hidden"><div class="small" style="margin-bottom:6px">SERVEUR</div><div class="srvRow" id="srvRow"></div><div id="srvInfo" class="small" style="margin:4px 0 12px;opacity:.7"></div><input id="nameInput" class="menuInput" maxlength="14" placeholder="TON PSEUDO"><button class="menuBtn" id="createBtn">CRÉER UNE PARTIE</button><input id="codeInput" class="menuInput" maxlength="5" placeholder="CODE DE LA PARTIE"><button class="menuBtn" id="joinBtn">REJOINDRE</button><button class="menuBtn" id="backBtn">← RETOUR</button></div>
 <div id="lobby" class="hidden"><div class="small">CODE DE LA PARTIE</div><div id="roomCode">-----</div><button class="menuBtn" id="copyBtn">COPIER LE CODE</button><div id="players"></div><div id="menuMsg"></div><button class="menuBtn secondary" id="teamBtn">CHANGER D’ÉQUIPE</button><button class="menuBtn hidden" id="startBtn">LANCER LA PARTIE</button><button class="menuBtn" id="leaveBtn">QUITTER</button></div>
 <div id="menuMsgMain"></div>
 </div></div>
@@ -75,7 +75,7 @@ var I18N={
 'TON PSEUDO':'YOUR NAME','CRÉER UNE PARTIE':'CREATE GAME','CODE DE LA PARTIE':'GAME CODE','REJOINDRE':'JOIN','← RETOUR':'← BACK','COPIER LE CODE':'COPY CODE',
 'CHANGER D’ÉQUIPE':'SWITCH TEAM','LANCER LA PARTIE':'START GAME','QUITTER':'QUIT','Quitter':'Quit','Continuer':'Continue','Quitter la partie ?':'Quit the game?','Quitter la partie':'Quit game',
 'Ta progression dans cette partie sera perdue.':'Your progress in this game will be lost.','La partie en cours sera perdue.':'The current game will be lost.',
-'Tu quittes le salon : l’IA prendra ta place.':'You are leaving: the AI will take your place.','Plein écran':'Fullscreen','POSER':'PLANT','DÉSAMORCER':'DEFUSE','RECHARGE':'RELOADING',
+'Tu quittes le salon : l’IA prendra ta place.':'You are leaving: the AI will take your place.','Plein écran':'Fullscreen','SERVEUR':'SERVER','France':'France','Californie':'California','Virginie':'Virginia','Singapour':'Singapore','Allemagne':'Germany','Pays-Bas':'Netherlands','Royaume-Uni':'United Kingdom','Brésil':'Brazil','Japon':'Japan','Australie':'Australia','Inde':'India','Afrique du Sud':'South Africa','Les parties que tu crées seront hébergées en ':'Games you create will be hosted in: ','POSER':'PLANT','DÉSAMORCER':'DEFUSE','RECHARGE':'RELOADING',
 'Code copié.':'Code copied.','Partage ce code à tes amis.':'Share this code with your friends.','Entre un code à 5 caractères.':'Enter a 5-character code.',
 'Connexion… (un serveur gratuit peut mettre 30 s à se réveiller)':'Connecting… (a free server can take 30 s to wake up)','Serveur inaccessible.':'Server unreachable.',
 'Connexion perdue.':'Connection lost.','Connexion perdue — retour au menu…':'Connection lost — back to menu…',"La partie s'est arrêtée — retour au menu…":'The game has stopped — back to menu…',
@@ -108,7 +108,7 @@ var I18N_RX=[
 [/^(\d+) joueur\(s\) prêt\(s\) · le chef du salon relance la partie$/,'$1 player(s) ready · the lobby leader restarts the game'],
 [/^Prêt ! En attente de (.*)…$/,function(m,a){return 'Ready! Waiting for '+(a==='du chef du salon'?'the lobby leader':a)+'…'}],
 [/^Tu es le chef du salon : « Recommencer » relance pour tout le monde$/,'You are the lobby leader: “Play again” restarts for everyone'],
-[/^La partie est pleine \((\d+) joueurs\)\.$/,'The game is full ($1 players).'],[/^Code : (.*)$/,'Code: $1'],[/^CARTE : (.*)$/,function(m,a){return 'MAP: '+TR(a)}],[/^Erreur: (.*)$/,'Error: $1'],
+[/^La partie est pleine \((\d+) joueurs\)\.$/,'The game is full ($1 players).'],[/^Code : (.*)$/,'Code: $1'],[/^Connexion au serveur (.*)…$/,function(m,a){return 'Connecting to the '+TR(a)+' server…'}],[/^CARTE : (.*)$/,function(m,a){return 'MAP: '+TR(a)}],[/^Erreur: (.*)$/,'Error: $1'],
 [/^(.*) \(toi\)$/,'$1 (you)'],[/^(.*) 👑 \(toi\)$/,'$1 👑 (you)']
 ];
 var _TRC=new Map();
@@ -1441,7 +1441,14 @@ if(at){
 
 // ---------- multijoueur privé ----------
 /* Si le jeu est héberge sur GitHub Pages, mets ici l'adresse de ton serveur, ex : 'wss://shooter-sd.onrender.com' */
-const DEFAULT_SERVER='wss://playdetonate.fly.dev';   // serveur Fly.io utilise quand le jeu est ouvert depuis GitHub Pages (a adapter si l'application Fly porte un autre nom)
+const DEFAULT_SERVER='wss://playdetonate.fly.dev';
+// Serveurs Fly.io : une machine par region. Le code du salon commence par la lettre de sa region :
+// un ami qui entre le code est toujours envoye sur le bon serveur, quel que soit le serveur qu'il a choisi.
+const REGIONS={cdg:['🇫🇷','France','F'],sjc:['🇺🇸','Californie','C'],lax:['🇺🇸','Californie','L'],iad:['🇺🇸','Virginie','V'],sin:['🇸🇬','Singapour','S'],
+ fra:['🇩🇪','Allemagne','G'],ams:['🇳🇱','Pays-Bas','A'],lhr:['🇬🇧','Royaume-Uni','B'],ord:['🇺🇸','Chicago','H'],dfw:['🇺🇸','Texas','D'],sea:['🇺🇸','Seattle','W'],ewr:['🇺🇸','New Jersey','E'],
+ yyz:['🇨🇦','Canada','Y'],gru:['🇧🇷','Brésil','R'],nrt:['🇯🇵','Japon','N'],syd:['🇦🇺','Australie','Z'],bom:['🇮🇳','Inde','M'],jnb:['🇿🇦','Afrique du Sud','J']};
+const REGION_OF_LETTER=Object.fromEntries(Object.entries(REGIONS).map(([k,v])=>[v[2],k]));
+let SRV_LIST=['cdg','sjc','iad','sin'],srvChoice=(()=>{try{return localStorage.getItem('detonate_srv')||''}catch(e){return ''}})(),netRegion='';   // serveur Fly.io utilise quand le jeu est ouvert depuis GitHub Pages (a adapter si l'application Fly porte un autre nom)
 let netMap='nuit',netSize=3,netMode=false,isHost=false,netSocket=null,netRoomCode='',netPlayerId='',localSlot=0,netPlayers=[],netInputs={},lastNetSend=0,lastNetState=0,netStarted=false,netConnected=false;
 let bseq=0,cRound=0,cBoom=0,lastU=0,netPing=0,lastPing=0,relPend=0,localInpC=null;
 const NET_URL=(()=>{const q=new URLSearchParams(location.search);if(q.get('server'))return q.get('server');
@@ -1452,22 +1459,34 @@ const myName=()=>{const v=($('nameInput')&&$('nameInput').value.trim())||'';retu
 function menuShow(id){['mainMenu','privateMenu','lobby'].forEach(x=>$(x).classList.toggle('hidden',x!==id));$('mapPick').classList.toggle('hidden',id==='lobby')}
 function menuMessage(t,cls=''){$('menuMsg').className=cls;$('menuMsg').textContent=t||''}
 function netBanner(t,ms){let d=$('netb');if(!d){d=document.createElement('div');d.id='netb';d.style.cssText='position:fixed;top:40%;left:0;right:0;text-align:center;z-index:60;background:#000c;color:#fff;font:600 17px system-ui;padding:14px';document.body.appendChild(d)}d.textContent=t;if(ms)setTimeout(()=>location.reload(),ms)}
-function wsConnect(){return new Promise((resolve,reject)=>{if(netSocket&&netSocket.readyState===1)return resolve();
- const ws=new WebSocket(NET_URL);netSocket=ws;const timer=setTimeout(()=>{try{ws.close()}catch(x){}reject(new Error('Serveur inaccessible.'))},50000);
- ws.onopen=()=>{clearTimeout(timer);netConnected=true;resolve()};
+function wsConnect(region){if(region!==undefined)netRegion=region;return new Promise((resolve,reject)=>{if(netSocket&&netSocket.readyState===1&&netSocket._rg===netRegion)return resolve();if(netSocket){try{netSocket.onclose=null;netSocket.close()}catch(x){}netSocket=null}
+ const ws=new WebSocket(NET_URL.replace(/\/$/,'')+'/?region='+encodeURIComponent(netRegion||srvChoice||''));netSocket=ws;const timer=setTimeout(()=>{try{ws.close()}catch(x){}reject(new Error('Serveur inaccessible.'))},50000);
+ ws._rg=netRegion;ws.onopen=()=>{clearTimeout(timer);netConnected=true;resolve()};
  ws.onerror=()=>{clearTimeout(timer);reject(new Error('Serveur inaccessible.'))};
  ws.onmessage=ev=>{let m;try{m=JSON.parse(ev.data)}catch(x){return}netMessage(m)};
  ws.onclose=()=>{netConnected=false;if(netMode&&!netStarted)menuMessage('Connexion perdue.','danger');else if(netMode&&netStarted)netBanner('Connexion perdue — retour au menu…',3500)}})}
 function sendNet(o){if(netSocket&&netSocket.readyState===1)netSocket.send(JSON.stringify(o))}
-async function createRoom(){menuMessage('Connexion… (un serveur gratuit peut mettre 30 s à se réveiller)');try{await wsConnect();sendNet({type:'create',name:myName(),map:mapChoice})}catch(e){menuMessage(e.message,'danger')}}
+// un serveur arrete redemarre en quelques secondes : on retente deux fois avant d'abandonner
+async function wsRetry(region){let err;for(let k=0;k<3;k++){try{return await wsConnect(region)}catch(e){err=e;await new Promise(r=>setTimeout(r,2500))}}throw err}
+function httpBase(){return NET_URL.replace(/^ws/,'http').replace(/\/$/,'')}
+function renderServers(){const row=$('srvRow');if(!row)return;row.innerHTML='';if(!srvChoice||!SRV_LIST.includes(srvChoice))srvChoice=SRV_LIST[0];
+ for(const r of SRV_LIST){const d=REGIONS[r]||['🌐',r.toUpperCase(),''];const b=document.createElement('button');b.className='srvBtn'+(r===srvChoice?' sel':'');
+  b.innerHTML=d[0]+' '+TR(d[1])+'<small>'+r.toUpperCase()+'</small>';
+  b.onclick=()=>{srvChoice=r;try{localStorage.setItem('detonate_srv',r)}catch(e){}renderServers()};row.appendChild(b)}
+ const d=REGIONS[srvChoice];$('srvInfo').textContent=d?TR('Les parties que tu crées seront hébergées en ')+TR(d[1])+'.':''}
+// liste des serveurs deployes + serveur le plus proche (cette requete ne reveille pas les serveurs arretes)
+if(location.protocol==='http:'||location.protocol==='https:')fetch(httpBase()+'/regions',{cache:'no-store'}).then(r=>r.json()).then(j=>{
+ if(Array.isArray(j.regions)&&j.regions.length)SRV_LIST=j.regions;if(!srvChoice&&j.here&&SRV_LIST.includes(j.here))srvChoice=j.here;renderServers()}).catch(()=>renderServers());
+renderServers();
+async function createRoom(){menuMessage('Connexion… (un serveur gratuit peut mettre 30 s à se réveiller)');try{await wsRetry(srvChoice);sendNet({type:'create',name:myName(),map:mapChoice})}catch(e){menuMessage(e.message,'danger')}}
 async function joinRoom(){const c=$('codeInput').value.trim().toUpperCase();if(c.length!==5)return menuMessage('Entre un code à 5 caractères.','danger');
- menuMessage('Connexion… (un serveur gratuit peut mettre 30 s à se réveiller)');try{await wsConnect();sendNet({type:'join',code:c,name:myName()})}catch(e){menuMessage(e.message,'danger')}}
+ menuMessage('Connexion… (un serveur gratuit peut mettre 30 s à se réveiller)');try{const rg=REGION_OF_LETTER[c[0]];if(rg&&REGIONS[rg])menuMessage('Connexion au serveur '+REGIONS[rg][1]+'…');await wsRetry(rg||srvChoice);sendNet({type:'join',code:c,name:myName()})}catch(e){menuMessage(e.message,'danger')}}
 function slotName(i){const p=netPlayers.find(x=>x.slot===i);return p?(i===localSlot?'Vous':p.name):'IA'}
 function netMessage(m){
  if(m.type==='pong'){const rtt=performance.now()-m.t;if(rtt<=1500)NETQ.ok.add(m.t);   /* une reponse arrivee apres 1,5 s compte comme perdue */NETQ.rtt.push(rtt);if(NETQ.rtt.length>8)NETQ.rtt.shift();netPing=Math.round(NETQ.rtt.reduce((a,b)=>a+b,0)/NETQ.rtt.length);return}
  if(m.type==='error')return menuMessage(m.message,'danger');
  if(m.type==='created'||m.type==='joined'){if(m.map)netMap=m.map;if(m.size)netSize=m.size;netMode=true;isHost=!!m.host;netRoomCode=m.code;netPlayerId=m.id;localSlot=m.slot;menuShow('lobby');$('roomCode').textContent=m.code;menuMessage('Partage ce code à tes amis.');return}
- if(m.type==='lobby'){if(m.map)netMap=m.map;if(m.size)netSize=m.size;netPlayers=m.players||[];netRoomCode=m.code||netRoomCode;const me=netPlayers.find(p=>p.id===netPlayerId);if(me){localSlot=me.slot;isHost=!!me.host}renderLobby();return}
+ if(m.type==='lobby'){if(m.region)netRegion=m.region;if(m.map)netMap=m.map;if(m.size)netSize=m.size;netPlayers=m.players||[];netRoomCode=m.code||netRoomCode;const me=netPlayers.find(p=>p.id===netPlayerId);if(me){localSlot=me.slot;isHost=!!me.host}renderLobby();return}
  if(m.type==='start'){if(m.server)isHost=false;READY=[];rematchAsked=false;   // la partie est calculee par le serveur : tout le monde (createur du salon compris) est un simple joueur
  loadMap(m.map||netMap||mapChoice);netStarted=true;netPlayers=m.players||netPlayers;NM=Array.from({length:2*TS},(_,i)=>slotName(i));menu.classList.add('hidden');netInputs={};cRound=0;round=0;score=[0,0];HEAT=[0,0,0];PRES=[0,0,0];newRound();return}
  if(m.type==='ready'){READY=m.ids||[];return}
