@@ -1487,7 +1487,9 @@ function netMessage(m){
  if(m.type==='error')return menuMessage(m.message,'danger');
  if(m.type==='created'||m.type==='joined'){if(m.map)netMap=m.map;if(m.size)netSize=m.size;netMode=true;isHost=!!m.host;netRoomCode=m.code;netPlayerId=m.id;localSlot=m.slot;menuShow('lobby');$('roomCode').textContent=m.code;menuMessage('Partage ce code à tes amis.');return}
  if(m.type==='lobby'){if(m.region)netRegion=m.region;if(m.map)netMap=m.map;if(m.size)netSize=m.size;netPlayers=m.players||[];netRoomCode=m.code||netRoomCode;const me=netPlayers.find(p=>p.id===netPlayerId);if(me){localSlot=me.slot;isHost=!!me.host}renderLobby();return}
- if(m.type==='start'){if(m.server)isHost=false;READY=[];rematchAsked=false;   // la partie est calculee par le serveur : tout le monde (createur du salon compris) est un simple joueur
+ if(m.type==='start'){if(m.server)isHost=false;READY=[];rematchAsked=false;
+ // les numeros des touches viennent du serveur et repartent de zero : on oublie ceux de la partie de fond du menu
+ hitSeq=0;lastHitU=0;HITEV=[];HITM=[];DMGI=[];   // la partie est calculee par le serveur : tout le monde (createur du salon compris) est un simple joueur
  loadMap(m.map||netMap||mapChoice);netStarted=true;netPlayers=m.players||netPlayers;NM=Array.from({length:2*TS},(_,i)=>slotName(i));menu.classList.add('hidden');netInputs={};cRound=0;round=0;score=[0,0];HEAT=[0,0,0];PRES=[0,0,0];newRound();return}
  if(m.type==='ready'){READY=m.ids||[];return}
  if(m.type==='remote_input'){netInputs[m.slot]=m.input||{};const e_=E&&E[m.slot];if(e_&&m.input&&m.input.q){if(m.input.dx!==undefined)(e_.mq||(e_.mq=[])).push([m.input.q,m.input.dx,m.input.dy]);else e_.ack=m.input.q}return}
@@ -1517,7 +1519,7 @@ function applyNetState(s){
  {const now=performance.now()/1000,o=now-s.T;(NETD.oh||(NETD.oh=[])).push([now,o]);while(NETD.oh.length&&now-NETD.oh[0][0]>2)NETD.oh.shift();NETD.ofs=Math.min(...NETD.oh.map(q=>q[1]));NETD.arr.push(now);while(NETD.arr.length&&now-NETD.arr[0]>2)NETD.arr.shift()}
  if(s.round!==cRound){cRound=s.round;B.forEach(b=>b.m.visible=false);B=[];XG.visible=false;EX=null;cBoom=0;lastU=0;E.forEach(e=>e.fresh=1)}
  T=s.T;round=s.round;atk=s.atk;score=s.score;bomb=s.bomb;st=s.st;KL=s.kl||[];
- (s.players||[]).forEach(q=>{const e=E[q.id];if(!e)return;if(e.id!==localSlot){const dT=s.T-(e.lt??s.T);if(dT>.001&&dT<.5&&e.tx!==undefined){e.vx=(q.x-e.tx)/dT;e.vy=(q.y-e.ty)/dT}else if(dT>=.5){e.vx=e.vy=0}e.lt=s.T;e.rcv=performance.now()}
+ (s.players||[]).forEach(q=>{const e=E[q.id];if(!e)return;if(e.id===localSlot){if(q.alive&&e.alive&&e._shp!==undefined&&q.hp<e._shp)DMGP={t:performance.now()};e._shp=q.alive?q.hp:undefined}if(e.id!==localSlot){const dT=s.T-(e.lt??s.T);if(dT>.001&&dT<.5&&e.tx!==undefined){e.vx=(q.x-e.tx)/dT;e.vy=(q.y-e.ty)/dT}else if(dT>=.5){e.vx=e.vy=0}e.lt=s.T;e.rcv=performance.now()}
   e.tx=q.x;e.ty=q.y;e.tang=q.ang;e.hp=q.hp;e.alive=q.alive;e.ammo=q.ammo;e.rl=q.rl;e.act=q.act;e.can=q.can;e.vt=q.vt;e.p=q.p;e.body=q.b;e.gren=q.g;if(s.fb){e.boost=s.fb.includes(e.id)?1:0;e.maxhp=e.boost?BOOST_HP:BASE_HP}if(q.f)e.fT=.06;
   if(e.fresh||!e.alive){e.x=q.x;e.y=q.y;e.ang=q.ang;e.fresh=0;e.buf=[];e.vx=e.vy=0;if(e.id===localSlot)PHIST=[]}
   else if(e.id===localSlot&&q.q){const h=PHIST.find(p=>p.q===q.q);PHIST=PHIST.filter(p=>p.q>q.q);e.ackMode=1;
@@ -1865,7 +1867,11 @@ function drawBoostNotif(hm){if(!hm)return;if(round!==boostRound){boostRound=roun
 function boostSnd(){if(!AC||!WS)return;const t=AC.currentTime;[523,659,784,1047].forEach((f,i)=>{const o=AC.createOscillator(),gn=AC.createGain();o.type='triangle';o.frequency.value=f;gn.gain.setValueAtTime(0,t+i*.08);gn.gain.linearRampToValueAtTime(.18,t+i*.08+.02);gn.gain.exponentialRampToValueAtTime(.001,t+i*.08+.35);o.connect(gn);gn.connect(WS);o.start(t+i*.08);o.stop(t+i*.08+.4)})}
 function wscr(x,y,h){const v=new THREE.Vector3(x,h||20,y).project(cam);return[(v.x+1)/2*W,(1-v.y)/2*H]}
 let cliCd=0;
-function drawHitFxEvents(){const now=performance.now();for(const q of HITEV){if(q.u<=lastHitU)continue;lastHitU=q.u;if(q.k===localSlot&&q.v!==localSlot){const me=E[localSlot],vic=E[q.v];HITM.push({x:q.x,y:q.y,t0:now,kill:q.kill,g:q.g,ally:!!(q.g&&me&&vic&&vic.team===me.team)})}if(q.v===localSlot)DMGI.push({sx:q.sx,sy:q.sy,t0:now})}}
+let DMGP=null,lastDmgI=0;
+function drawHitFxEvents(){const now=performance.now();for(const q of HITEV){if(q.u<=lastHitU)continue;lastHitU=q.u;if(q.k===localSlot&&q.v!==localSlot){const me=E[localSlot],vic=E[q.v];HITM.push({x:q.x,y:q.y,t0:now,kill:q.kill,g:q.g,ally:!!(q.g&&me&&vic&&vic.team===me.team)})}if(q.v===localSlot){DMGI.push({sx:q.sx,sy:q.sy,t0:now});lastDmgI=now}}
+ // PV en baisse sans evenement recu : indicateur tourne vers l'ennemi visible le plus proche
+ if(DMGP&&now-DMGP.t>180){const at=DMGP.t;DMGP=null;const me=E&&E[localSlot];if(me&&me.alive&&now-lastDmgI>400&&lastDmgI<at){let b=null,bd=1e9;for(const e of E)if(e.alive&&e.team!==me.team){const d=Math.hypot(e.x-me.x,e.y-me.y);if(d<bd){bd=d;b=e}}
+  if(b){DMGI.push({sx:b.x,sy:b.y,t0:now});lastDmgI=now}}}}
 function drawHitFx(hm){const now=performance.now();
  drawHitFxEvents();
  // marqueur de touche sur l'ennemi touche (rouge et plus grand si elimination)
