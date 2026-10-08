@@ -1448,7 +1448,7 @@ const REGIONS={cdg:['🇫🇷','France','F'],sjc:['🇺🇸','Californie','C'],l
  fra:['🇩🇪','Allemagne','G'],ams:['🇳🇱','Pays-Bas','A'],lhr:['🇬🇧','Royaume-Uni','B'],ord:['🇺🇸','Chicago','H'],dfw:['🇺🇸','Texas','D'],sea:['🇺🇸','Seattle','W'],ewr:['🇺🇸','New Jersey','E'],
  yyz:['🇨🇦','Canada','Y'],gru:['🇧🇷','Brésil','R'],nrt:['🇯🇵','Japon','N'],syd:['🇦🇺','Australie','Z'],bom:['🇮🇳','Inde','M'],jnb:['🇿🇦','Afrique du Sud','J']};
 const REGION_OF_LETTER=Object.fromEntries(Object.entries(REGIONS).map(([k,v])=>[v[2],k]));
-let netErrT=-1e9,SRV_LIST=['cdg','sjc','iad','sin'],srvChoice=(()=>{try{return localStorage.getItem('detonate_srv')||''}catch(e){return ''}})(),netRegion='';   // serveur Fly.io utilise quand le jeu est ouvert depuis GitHub Pages (a adapter si l'application Fly porte un autre nom)
+let netErrT=-1e9,SRV_LIST=['cdg','lax','iad','sin'],srvChoice=(()=>{try{return localStorage.getItem('detonate_srv')||''}catch(e){return ''}})(),netRegion='';   // serveur Fly.io utilise quand le jeu est ouvert depuis GitHub Pages (a adapter si l'application Fly porte un autre nom)
 let netMap='nuit',netSize=3,netMode=false,isHost=false,netSocket=null,netRoomCode='',netPlayerId='',localSlot=0,netPlayers=[],netInputs={},lastNetSend=0,lastNetState=0,netStarted=false,netConnected=false;
 let bseq=0,cRound=0,cBoom=0,lastU=0,netPing=0,lastPing=0,relPend=0,localInpC=null;
 const NET_URL=(()=>{const q=new URLSearchParams(location.search);if(q.get('server'))return q.get('server');
@@ -1467,7 +1467,12 @@ function wsConnect(region){if(region!==undefined)netRegion=region;return new Pro
  ws.onclose=()=>{netConnected=false;if(netMode&&!netStarted&&performance.now()-netErrT>3000)menuMessage('Connexion perdue.','danger');else if(netMode&&netStarted)netBanner('Connexion perdue — retour au menu…',3500)}})}
 function sendNet(o){if(netSocket&&netSocket.readyState===1)netSocket.send(JSON.stringify(o))}
 // un serveur arrete redemarre en quelques secondes : on retente deux fois avant d'abandonner
-async function wsRetry(region){let err;for(let k=0;k<3;k++){try{return await wsConnect(region)}catch(e){err=e;await new Promise(r=>setTimeout(r,2500))}}throw err}
+// reveil direct du serveur choisi (le proxy Fly.io demarre la machine de cette region si elle est arretee)
+async function wakeRegion(region){if(!region||!/^[a-z]{3}$/.test(region)||!(location.protocol==='http:'||location.protocol==='https:'))return;
+ for(let k=0;k<3;k++){try{const c=new AbortController(),t=setTimeout(()=>c.abort(),20000);
+  const r=await fetch(httpBase()+'/wake?region='+region+'&t='+Date.now(),{headers:{'fly-force-region':region},cache:'no-store',signal:c.signal});clearTimeout(t);
+  const j=await r.json();if(!j.region||j.region===region)return}catch(e){}await new Promise(r=>setTimeout(r,1500))}}
+async function wsRetry(region){await wakeRegion(region);let err;for(let k=0;k<3;k++){try{return await wsConnect(region)}catch(e){err=e;await new Promise(r=>setTimeout(r,2500))}}throw err}
 function httpBase(){return NET_URL.replace(/^ws/,'http').replace(/\/$/,'')}
 function renderServers(){const row=$('srvRow');if(!row)return;row.innerHTML='';if(!srvChoice||!SRV_LIST.includes(srvChoice))srvChoice=SRV_LIST[0];
  for(const r of SRV_LIST){const d=REGIONS[r]||['🌐',r.toUpperCase(),''];const b=document.createElement('button');b.className='srvBtn'+(r===srvChoice?' sel':'');
