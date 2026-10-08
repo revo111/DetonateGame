@@ -13,8 +13,8 @@ kill_timeout = "10s"
   PORT = "8080"
   # Serveurs proposés dans le menu du jeu : une machine par région.
   # Doit correspondre aux régions affichées par « fly status »
-  # (si ta machine de Californie est à Los Angeles, remplace sjc par lax).
-  REGIONS = "cdg,sjc,iad,sin"
+  # (Californie = lax, Los Angeles).
+  REGIONS = "cdg,lax,iad,sin"
 
 [http_service]
   internal_port = 8080
