@@ -27,6 +27,16 @@ const MAP_SIZE = {
 };
 
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+// ---------- plusieurs serveurs (une machine Fly.io par region) ----------
+// FLY_REGION est fourni par Fly.io (ex. « cdg »). REGIONS (fly.toml) liste les regions deployees.
+const HERE = process.env.FLY_REGION || '';
+const APP = process.env.FLY_APP_NAME || '';
+const ENV_REGIONS = String(process.env.REGIONS || '').split(',').map(r => r.trim().toLowerCase()).filter(Boolean);
+// lettre de region en tete de chaque code de salon (doit correspondre a la table du jeu, index.html)
+const REGION_LETTER = { cdg: 'F', sjc: 'C', lax: 'L', iad: 'V', sin: 'S', fra: 'G', ams: 'A', lhr: 'B', ord: 'H', dfw: 'D',
+  sea: 'W', ewr: 'E', yyz: 'Y', gru: 'R', nrt: 'N', syd: 'Z', bom: 'M', jnb: 'J' };
+const isRegion = r => /^[a-z]{3}$/.test(r);
 const rooms = new Map(); // code -> salon
 
 
@@ -34,6 +44,35 @@ const rooms = new Map(); // code -> salon
 
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
+
+  if (url === '/regions') {
+    // ne reveille aucun autre serveur : simple liste lue dans la configuration
+    const list = ENV_REGIONS.length ? ENV_REGIONS.slice() : (HERE ? [HERE] : []);
+    if (HERE && !list.includes(HERE)) list.push(HERE);
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' });
+    return res.end(JSON.stringify({ here: HERE, regions: list }));
+  }
+
+  // Diagnostic : https://playdetonate.fly.dev/where?region=cdg
+  // Fly.io renvoie la demande vers la machine de cette region ; la reponse dit qui a repondu,
+  // ou pourquoi Fly.io n'a pas pu joindre la machine.
+  if (url === '/where') {
+    let want = '';
+    try { want = (new URL(req.url, 'http://x').searchParams.get('region') || '').toLowerCase(); } catch (e) {}
+    const failed = req.headers['fly-replay-failed'];
+    if (HERE && isRegion(want) && want !== HERE && !req.headers['fly-replay-src'] && !failed) {
+      res.writeHead(307, { 'fly-replay': 'region=' + want + ';timeout=20s;fallback=force_self', 'Content-Length': '0' });
+      return res.end();
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' });
+    return res.end(JSON.stringify({
+      demande: want || null,
+      repondu_par_region: HERE || null,
+      machine: process.env.FLY_MACHINE_ID || null,
+      ok: !failed && (!want || want === HERE),
+      echec_fly: failed || null
+    }, null, 1));
+  }
 
   if (url === '/health') {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -64,8 +103,35 @@ const server = http.createServer((req, res) => {
 
 
 const wss = new WebSocketServer({
-  server,
+  noServer: true,
   maxPayload: 256 * 1024
+});
+
+// Chaque connexion demande sa region (?region=cdg). Si cette machine n'est pas dans la bonne region,
+// on repond « fly-replay » : le proxy Fly.io rejoue la demande vers la machine de cette region
+// (et la demarre si elle etait arretee). La negociation WebSocket se fait uniquement sur la bonne machine.
+server.on('upgrade', (req, socket, head) => {
+  let want = '';
+  try { want = (new URL(req.url, 'http://x').searchParams.get('region') || '').toLowerCase(); } catch (e) {}
+  const replayed = !!req.headers['fly-replay-src'];
+  const failed = req.headers['fly-replay-failed'];
+  if (HERE && isRegion(want) && want !== HERE && !replayed && !failed) {
+    // si la machine de cette region est injoignable, Fly.io nous renvoie la demande (fallback)
+    socket.write('HTTP/1.1 307 Temporary Redirect\r\n' +
+      'fly-replay: region=' + want + ';timeout=20s;fallback=force_self\r\n' +
+      'Content-Length: 0\r\nConnection: close\r\n\r\n');
+    return socket.destroy();
+  }
+  if (failed) {
+    // le serveur demande n'a pas pu etre joint : on previent le joueur avec la raison donnee par Fly.io
+    const reason = (/reason=([a-z_]+)/.exec(failed) || [])[1] || 'inconnue';
+    console.error('Serveur ' + want + ' injoignable depuis ' + HERE + ' : ' + failed);
+    return wss.handleUpgrade(req, socket, head, ws => {
+      send(ws, { type: 'error', message: 'Serveur ' + want.toUpperCase() + ' injoignable (' + reason + ').' });
+      setTimeout(() => ws.close(), 300);
+    });
+  }
+  wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
 });
 
 
@@ -79,6 +145,7 @@ const newCode = () => {
       { length: 5 },
       () => ALPHA[Math.random() * ALPHA.length | 0]
     ).join('');
+    if (REGION_LETTER[HERE]) c = REGION_LETTER[HERE] + c.slice(1);
   } while (rooms.has(c));
 
   return c;
@@ -116,6 +183,7 @@ const lobby = room =>
     send(p.ws, {
       type: 'lobby',
       code: room.code,
+      region: HERE,
       map: room.map,
       size: room.size,
       players: publicPlayers(room)
@@ -698,8 +766,17 @@ setInterval(() => {
 
 // ---------- démarrage ----------
 
+// Arret demande par Fly.io (deploiement, redemarrage) : on previent les joueurs avant de fermer.
+// Le proxy n'arrete jamais de lui-meme une machine qui a des joueurs connectes (voir fly.toml).
+function shutdown() {
+  wss.clients.forEach(ws => send(ws, { type: 'closed' }));
+  setTimeout(() => process.exit(0), 500);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
 server.listen(PORT, () => {
   console.log(
-    'Serveur prêt sur le port ' + PORT
+    'Serveur prêt sur le port ' + PORT + (HERE ? ' · région ' + HERE : '') + (APP ? ' · application ' + APP : '')
   );
 });
