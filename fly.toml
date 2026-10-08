@@ -1,0 +1,37 @@
+# Configuration Fly.io du serveur Detonate
+# Remplace « detonate-jeu » par le nom choisi à la création de l'application (il donne l'adresse https://NOM.fly.dev)
+app = "detonate-jeu"
+primary_region = "cdg"          # Paris : le plus proche pour des joueurs en France
+
+[build]
+  # construit l'image à partir du Dockerfile du dossier
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # le serveur s'arrête quand plus personne n'est connecté (aucun coût de calcul),
+  # et redémarre tout seul à la première connexion (quelques secondes)
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  # les parties sont gardées en mémoire : UNE seule machine doit recevoir tous les joueurs
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 200
+    hard_limit = 250
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"
