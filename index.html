@@ -1899,14 +1899,14 @@ function icoHeart(x,y,r,c){g.save();g.fillStyle=c;g.beginPath();g.moveTo(x,y+r*.
 function icoCross(x,y,r,c){g.fillStyle=c;const a=r*.36;g.beginPath();g.roundRect?g.roundRect(x-a,y-r,a*2,r*2,a*.6):g.rect(x-a,y-r,a*2,r*2);g.fill();g.beginPath();g.roundRect?g.roundRect(x-r,y-a,r*2,a*2,a*.6):g.rect(x-r,y-a,r*2,a*2);g.fill()}
 function icoBullets(x,y,r,c){g.fillStyle=c;for(let k=-1;k<=1;k++){const bx=x+k*r*.62-r*.2;g.beginPath();g.moveTo(bx,y-r*.95);g.quadraticCurveTo(bx+r*.42,y-r*.6,bx+r*.4,y-r*.25);g.lineTo(bx+r*.4,y+r*.9);g.lineTo(bx-r*.0,y+r*.9);g.lineTo(bx,y-r*.95);g.closePath();g.fill()}}
 function icoSpeed(x,y,r,c){g.save();g.strokeStyle=c;g.lineWidth=Math.max(2,r*.32);g.lineCap='round';g.lineJoin='round';for(const dx of[-r*.55,r*.35]){g.beginPath();g.moveTo(x+dx-r*.35,y-r*.7);g.lineTo(x+dx+r*.3,y);g.lineTo(x+dx-r*.35,y+r*.7);g.stroke()}g.restore()}
-function drawATH(hm,narrow){const sc=W<420?.92:(W>=1100&&H>=650?1.12:1),pw=Math.min(W-24,380*sc),ph=66*sc,px=W/2-pw/2,py=H-ph-(narrow?26:14),mx=(hm.boost||hm.hp>BASE_HP)?BOOST_HP:BASE_HP,hp=Math.max(0,Math.min(mx,hm.hp)),fr=hp/mx;
+function drawATH(hm,narrow){const sc=(W<420?.92:(W>=1100&&H>=650?1.12:1))*.8,pw=Math.min(W-24,380*sc),ph=66*sc,px=W/2-pw/2,py=H-ph-(narrow?26:14),mx=(hm.boost||hm.hp>BASE_HP)?BOOST_HP:BASE_HP,hp=Math.max(0,Math.min(mx,hm.hp)),fr=hp/mx;
  if(hp>athGhost)athGhost=hp;else athGhost=Math.max(hp,athGhost-mx*.9*(gdt||.016));athTop=py;
  const low=fr<=.3,hc=fr>.5?'#4fd37a':(fr>.3?'#ffc83c':'#ff5a4a'),now=performance.now();
  // fond
- pill(px,py,pw,ph,14,'rgba(8,12,22,.8)');g.save();g.lineWidth=1.5;g.strokeStyle=low?'rgba(255,90,74,'+(.45+.4*Math.sin(now/180))+')':(hm.boost?'rgba(255,200,60,.55)':'rgba(255,255,255,.1)');
+ pill(px,py,pw,ph,12,'rgba(8,12,22,.8)');g.save();g.lineWidth=1.5;g.strokeStyle=low?'rgba(255,90,74,'+(.45+.4*Math.sin(now/180))+')':(hm.boost?'rgba(255,200,60,.55)':'rgba(255,255,255,.1)');
  g.beginPath();g.roundRect?g.roundRect(px+.75,py+.75,pw-1.5,ph-1.5,14):g.rect(px,py,pw,ph);g.stroke();g.restore();
  // ---- vie
- const lw=pw*.6,bx=px+14,bw=lw-26,bh=11*sc,by=py+ph-bh-12*sc,ty=py+21*sc;
+ const lw=pw*.6,bx=px+12*sc,bw=lw-22*sc,bh=11*sc,by=py+ph-bh-12*sc,ty=py+21*sc;
  icoCross(bx+8*sc,ty,8*sc,hc);
  g.font='800 '+Math.round(26*sc)+'px system-ui';const hs=String(Math.ceil(hp)),hw=g.measureText(hs).width;
  txt(hs,bx+22*sc,ty+1,Math.round(26*sc),low?'#ff7a6a':'#fff','left',800);txt('/ '+mx,bx+22*sc+hw+5,ty+3,Math.round(13*sc),'rgba(255,255,255,.55)','left',600);
