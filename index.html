@@ -589,7 +589,7 @@ const TM=(tx,w,h,z,c)=>{const t=tx.clone();t.needsUpdate=true;t.repeat.set(w/z,h
 TX.brk=TX.brk2;TX.unused=TX_(x=>{x.fillStyle='#5a3126';x.fillRect(0,0,128,128);for(let r=0;r<8;r++)for(let c=0;c<4;c++){x.fillStyle=['#7d4535','#5e3226','#8a5240'][(r*3+c)%3];x.fillRect(c*32+(r%2?16:0),r*16,30,14)}spk(x,200,['#0004'],2)});
 const TREEM=M(TX.bush,100,100).clone();TREEM.transparent=true;TREEM.opacity=.8;TREEM.depthWrite=false;const TRUNKM=new THREE.MeshLambertMaterial({color:0x4a3522});
 const wheelGeo=new THREE.CylinderGeometry(8,8,6,12),wheelM=new THREE.MeshLambertMaterial({color:0x14161a});
-const roofM=[0x7a3326,0x284f78,0x356543,0x9a7424].map(c=>new THREE.MeshLambertMaterial({color:c})),capM=new THREE.MeshLambertMaterial({color:0x42464a}),glassM=new THREE.MeshLambertMaterial({color:0x0c1118}),hlM=new THREE.MeshBasicMaterial({color:0xfff2b0}),tlM=new THREE.MeshBasicMaterial({color:0xc01818}),stM=new THREE.MeshLambertMaterial({color:0xd8d8d0}),rdM=new THREE.MeshLambertMaterial({color:0xb02a20}),grM=new THREE.MeshLambertMaterial({color:0x2d5a3a}),drM=[0x8a2a1a,0x2a4a7a,0x555a30].map(c=>new THREE.MeshLambertMaterial({color:c}));
+const roofM=[0x7a3326,0x284f78,0x356543,0x9a7424].map(c=>new THREE.MeshLambertMaterial({color:c})),capM=new THREE.MeshLambertMaterial({color:0x42464a}),glassM=new THREE.MeshPhongMaterial({color:0x1b2d40,specular:0x7f9bbb,shininess:60}),hlM=new THREE.MeshBasicMaterial({color:0xfff2b0}),tlM=new THREE.MeshBasicMaterial({color:0xc01818}),stM=new THREE.MeshLambertMaterial({color:0xd8d8d0}),rdM=new THREE.MeshLambertMaterial({color:0xb02a20}),grM=new THREE.MeshLambertMaterial({color:0x2d5a3a}),drM=[0x8a2a1a,0x2a4a7a,0x555a30].map(c=>new THREE.MeshLambertMaterial({color:c}));
 
 // ---------- construction du monde selon la carte ----------
 const cliffM=new THREE.MeshLambertMaterial({color:0x5c4532}),adobeM=new THREE.MeshLambertMaterial({color:0xb5835a}),hutM=new THREE.MeshLambertMaterial({color:0xc49a6a}),hutRoofM=new THREE.MeshLambertMaterial({color:0xa77b4f}),
@@ -851,9 +851,19 @@ const CARX={};function carTexD(i,night){const ck=(night?'n':'d')+i;if(CARX[ck])r
 const CARPERM=[0,3,2,6,1,5,7,4];let CARMAP=null;
 const carVar=(x,y)=>{if(!CARMAP||CARMAP.id!==MAPID){CARMAP={id:MAPID,m:new Map()};const all=OB.filter(o=>o.t==='v').map(o=>[o.x,o.y]).concat(ROT.filter(r=>r[0]==='v').map(r=>[r[1],r[2]])).sort((a,b)=>a[0]-b[0]||a[1]-b[1]);all.forEach((p,i)=>CARMAP.m.set(p[0]+','+p[1],CARPERM[i%CARPERM.length]))}
  const v=CARMAP.m.get(x+','+y);return v===undefined?Math.abs(Math.round(x*7.31+y*3.17))%CARV.length:v};
+// habitacle de voiture : ceinture de caisse, bandeau de vitres en retrait, pare-brise et lunette inclines, toit pose au-dessus.
+// aucune face n'est au meme niveau qu'une autre (c'est ce qui faisait scintiller les vitres quand la camera bougeait).
+// add(longueur, hauteur, largeur(fraction), materiau, position le long de la voiture (-0.5 avant .. 0.5 arriere), hauteur, inclinaison)
+function carGreenhouse(add,LEN,vm){
+ add(LEN*.40,7,.88,vm,0,25.5,0);                                   // ceinture de caisse (sous les vitres)
+ add(LEN*.355,7.4,.845,glassM,.005,32.6,0);                        // vitres laterales, en retrait de la caisse
+ const pane=(c0,c1,y0,y1,w)=>{const dx=(c1-c0)*LEN,dy=y1-y0;add(1.4,Math.hypot(dx,dy),w,glassM,(c0+c1)/2,(y0+y1)/2,-Math.atan2(dx,dy))};
+ pane(-.222,-.152,28.2,36.6,.8);                                   // pare-brise incline vers l'arriere
+ pane(.212,.158,28.2,36.6,.78);                                    // lunette arriere
+ add(LEN*.305,2.6,.83,vm,.003,37.6,0)}                            // toit, pose juste sur les vitres
 function carModel(G,LEN,WID,col,vx,vy){const vm=carTexD(carVar(vx||0,vy||0),CUR.theme!=='desert');
  box(LEN,9,WID*.92,vm,0,7,0,G);box(LEN*.99,13,WID,vm,0,16,0,G);box(LEN*.3,7,WID*.94,vm,-LEN*.33,25,0,G);box(LEN*.22,7,WID*.94,vm,LEN*.38,25,0,G);
- box(LEN*.42,15,WID*.88,vm,LEN*.02,29,0,G);box(LEN*.4,11,WID*.9,glassM,LEN*.02,31,0,G);box(LEN*.36,4,WID*.84,vm,LEN*.04,38,0,G);
+ carGreenhouse((u,h,v,m,c,y,r)=>{const b=box(u,h,WID*v,m,LEN*c,y,0,G);if(r)b.rotation.z=r;return b},LEN,vm);
  for(const u of[-.3,.32])for(const v of[-.47,.47]){const w=new THREE.Mesh(wheelGeo,wheelM);w.rotation.x=Math.PI/2;w.position.set(LEN*u,7,WID*v);G.add(w)}}
 const CLIFFM=new Map();function cliffMat(w,h){const r=Math.max(1,Math.round(Math.max(w,h)/160)),k='c'+r;let m=CLIFFM.get(k);if(!m){const t=(TX.sst?TX.sst[0]:TX.rock).clone();t.needsUpdate=true;t.repeat.set(r,1);t.anisotropy=8;m=new THREE.MeshPhongMaterial({map:t,bumpMap:t,bumpScale:1.2,shininess:4,specular:0x1a1a1a});CLIFFM.set(k,m)}return m}
 let FZ=null;
@@ -1021,13 +1031,8 @@ else{
  put(LEN*.99,13,WID,vm,.5,16,0);
  // capot avant et coffre arriere, plus bas que l'habitacle
  put(LEN*.3,7,WID*.94,vm,.17,25,0);put(LEN*.22,7,WID*.94,vm,.88,25,0);
- // habitacle avec pare-brise incline a l'avant
- put(LEN*.42,15,WID*.88,vm,.52,29,0);
- put(LEN*.1,13,WID*.84,glassM,.3,30,0,.5);
- put(LEN*.08,12,WID*.84,glassM,.75,30,0,-.45);
- put(LEN*.4,11,WID*.9,glassM,.52,31,0);
- // toit
- put(LEN*.36,4,WID*.84,vm,.54,38,0);
+ // habitacle (meme modele que les voitures en biais)
+ carGreenhouse((u,h,v,m,c,y,r)=>put(u,h,WID*v,m,.5+c,y,0,r),LEN,vm);
  // bas de caisse et pare-chocs sombres
  put(LEN,5,WID*.98,BK,.5,3,0);
  for(const e of[.015,.985])put(LEN*.05,8,WID*.96,BK,e,13,0);
