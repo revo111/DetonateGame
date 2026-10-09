@@ -1964,6 +1964,79 @@ if(quitBtn&&quitBtn.addEventListener){const stop=e=>{e.stopPropagation()};['poin
  document.getElementById('quitNo').addEventListener('click',()=>{quitBox.style.display='none'});
  document.getElementById('quitYes').addEventListener('click',()=>{try{if(netMode)sendNet({type:'leave'})}catch(e){}setTimeout(()=>location.reload(),netMode?150:0)})}
 function pill(x,y,w,h,r,c){g.fillStyle=c;g.beginPath();if(g.roundRect)g.roundRect(x,y,w,h,r);else g.rect(x,y,w,h);g.fill()}
+// ---------- affichage des manches : role (attaque / defense), debut et fin de manche ----------
+const LG=(fr,en)=>LANG==='en'?en:fr;
+const ROLEC={a:'#ffb23e',d:'#5fc1ff',win:'#4fe08a',lose:'#ff5a4e'};
+function hexA(h,a){const n=parseInt(h.slice(1),16);return'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a+')'}
+function icoBomb(x,y,r,c){g.save();g.fillStyle=c;g.strokeStyle=c;g.lineCap='round';g.beginPath();g.arc(x,y+r*.12,r*.78,0,7);g.fill();
+ g.fillRect(x-r*.22,y-r*.82,r*.44,r*.3);g.lineWidth=Math.max(1.5,r*.16);g.beginPath();g.moveTo(x,y-r*.8);g.quadraticCurveTo(x+r*.25,y-r*1.2,x+r*.62,y-r*1.02);g.stroke();
+ g.fillStyle='#fff3c0';g.beginPath();g.arc(x+r*.7,y-r*1.02,r*.17,0,7);g.fill();g.restore()}
+function icoShield(x,y,r,c){g.save();g.fillStyle=c;g.beginPath();g.moveTo(x,y-r);g.lineTo(x+r*.86,y-r*.6);g.lineTo(x+r*.74,y+r*.3);g.quadraticCurveTo(x+r*.4,y+r*.82,x,y+r*1.02);
+ g.quadraticCurveTo(x-r*.4,y+r*.82,x-r*.74,y+r*.3);g.lineTo(x-r*.86,y-r*.6);g.closePath();g.fill();
+ g.strokeStyle='rgba(8,12,22,.55)';g.lineWidth=Math.max(1.5,r*.14);g.beginPath();g.moveTo(x,y-r*.62);g.lineTo(x,y+r*.66);g.stroke();g.restore()}
+function icoRole(at,x,y,r){at?icoBomb(x,y,r,ROLEC.a):icoShield(x,y,r,ROLEC.d)}
+// texte en plusieurs morceaux de couleurs differentes, centre sur x
+function segs(P,x,y){let w=0;for(const q of P){g.font=(q[3]||700)+' '+q[2]+'px system-ui,-apple-system,"Segoe UI",sans-serif';q.w=g.measureText(q[0]).width;w+=q.w}
+ let cx=x-w/2;for(const q of P){txt(q[0],cx,y,q[2],q[1],'left',q[3]||700);cx+=q.w}return w}
+function card(x,y,w,h,acc){pill(x,y,w,h,16,'rgba(8,12,22,.84)');g.save();g.lineWidth=1.5;g.strokeStyle=hexA(acc,.55);g.beginPath();g.roundRect?g.roundRect(x+.75,y+.75,w-1.5,h-1.5,16):g.rect(x,y,w,h);g.stroke();
+ g.beginPath();g.roundRect?g.roundRect(x,y,w,h,16):g.rect(x,y,w,h);g.clip();g.fillStyle=acc;g.fillRect(x,y,w,4);g.restore()}
+function sitesTxt(){return(SITES||[]).map(q=>q.n).join(', ')}
+// pastille sous le tableau des scores : role du joueur, ou etat de la bombe une fois posee
+function drawRoleChip(cx,y,mt,maxW){const at=atk==mt,sz=maxW<230?12:13;let col,label,sub,ico;
+ if(bomb.planted&&bomb.defused){col=ROLEC.win;label=LG('BOMBE DÉSAMORCÉE','BOMB DEFUSED');sub=''}
+ else if(bomb.planted){col=ROLEC.lose;const sn=SITES[bomb.site]?SITES[bomb.site].n:'';label=LG('BOMBE POSÉE · SITE ','BOMB PLANTED · SITE ')+sn;sub=at?LG('protégez-la','guard it'):LG('désamorcez-la !','defuse it!')}
+ else{col=at?ROLEC.a:ROLEC.d;label=at?LG('ATTAQUE','ATTACK'):LG('DÉFENSE','DEFENSE');sub=at?LG('posez la bombe','plant the bomb'):LG('protégez les sites','guard the sites')}
+ const ir=sz*.55,h=sz+12;g.font='800 '+sz+'px system-ui';let w1=g.measureText(label).width;g.font='600 '+sz+'px system-ui';let w2=sub?g.measureText('  ·  '+sub).width:0;
+ if(40+w1+w2>maxW){sub='';w2=0}const w=Math.min(maxW,40+w1+w2);
+ const pulse=bomb.planted&&!bomb.defused&&!at?.75+.25*Math.sin(performance.now()/160):1;
+ g.save();g.globalAlpha=pulse;pill(cx-w/2,y,w,h,h/2,hexA(col,.2));g.lineWidth=1.2;g.strokeStyle=hexA(col,.75);g.beginPath();g.roundRect?g.roundRect(cx-w/2+.6,y+.6,w-1.2,h-1.2,h/2):g.rect(cx-w/2,y,w,h);g.stroke();
+ const x0=cx-w/2+10;if(bomb.planted)icoBomb(x0+ir,y+h/2+1,ir,col);else icoRole(at,x0+ir,y+h/2,ir);
+ txt(label,x0+ir*2+6,y+h/2+1,sz,col,'left',800);if(sub)txt('  ·  '+sub,x0+ir*2+6+w1,y+h/2+1,sz,'rgba(255,255,255,.88)','left',600);g.restore();return h}
+// debut de manche : grand panneau "VOUS ATTAQUEZ / VOUS DEFENDEZ" + objectif + compte a rebours
+function drawRoundIntro(mt,top){const at=atk==mt,col=at?ROLEC.a:ROLEC.d,tot=round===1?5:3,el=Math.max(0,tot-st.t),a=Math.min(1,el/.3),
+ cw=Math.min(W-28,470),TS_=Math.round(Math.max(26,Math.min(42,cw*.09))),ch=TS_+142,k=Math.max(.75,Math.min(1,(H-top-64)/(ch+64)));
+ g.save();g.globalAlpha=a;g.translate(W/2,top+(1-a)*-12);g.scale(k,k);const x=-cw/2;card(x,0,cw,ch,col);
+ // ligne du haut : numero de manche (+ balle de match / derniere manche)
+ const mp=score[0]===WIN_PTS-1||score[1]===WIN_PTS-1,last=round>=MAX_ROUNDS;g.letterSpacing='2px';
+ const top1=(round===1?LG('PRÉPARATION · ','GET READY · '):'')+LG('MANCHE ','ROUND ')+round+' / '+MAX_ROUNDS;
+ if(mp||last){segs([[top1,'rgba(255,255,255,.62)',12,700],['   ·   ','rgba(255,255,255,.4)',12],[last?LG('DERNIÈRE MANCHE','FINAL ROUND'):LG('BALLE DE MATCH','MATCH POINT'),'#ffcf5a',12,800]],0,24)}
+ else txt(top1,0,24,12,'rgba(255,255,255,.62)',null,700);g.letterSpacing='0px';
+ // titre
+ const title=at?LG('VOUS ATTAQUEZ','YOU ATTACK'):LG('VOUS DÉFENDEZ','YOU DEFEND');g.font='800 '+TS_+'px system-ui';const tw=g.measureText(title).width,ir=TS_*.42,ty=30+TS_*.75,
+  pop=el<.35?1+.18*(1-el/.35):1;
+ g.save();g.translate(0,ty);g.scale(pop,pop);icoRole(at,-(tw+ir*2+12)/2+ir,0,ir);txt(title,-(tw+ir*2+12)/2+ir*2+12,1,TS_,col,'left',800);g.restore();
+ // objectif
+ const o1=at?LG('Posez la bombe sur le site '+sitesTxt().replace(/, ([^,]*)$/,' ou $1'),'Plant the bomb on site '+sitesTxt().replace(/, ([^,]*)$/,' or $1')):LG('Défendez les sites '+sitesTxt().replace(/, ([^,]*)$/,' et $1'),'Defend sites '+sitesTxt().replace(/, ([^,]*)$/,' and $1')),
+  o2=at?LG('ou éliminez tous les défenseurs','or eliminate every defender'):LG('Empêchez la pose, désamorcez la bombe ou éliminez les attaquants','Stop the plant, defuse the bomb or eliminate the attackers');
+ const oy=ty+TS_*.62+16;txt(o1,0,oy,cw<380?15:16,'#ffffff',null,700);
+ let o2s=cw<380?12.5:13.5;g.font='500 '+o2s+'px system-ui';while(g.measureText(o2).width>cw-24&&o2s>10){o2s-=.5;g.font='500 '+o2s+'px system-ui'}txt(o2,0,oy+22,o2s,'rgba(255,255,255,.7)',null,500);
+ // score
+ const sy=ch-22;g.fillStyle='rgba(255,255,255,.1)';g.fillRect(x+18,sy-19,cw-36,1);
+ segs([[TD(0).nom+(mt===0?LG(' (vous)',' (you)'):'')+'  ',TD(0).css,13,700],[score[0]+' – '+score[1],'#fff',15,800],['  '+TD(1).nom+(mt===1?LG(' (vous)',' (you)'):''),TD(1).css,13,700],
+  ['     '+LG('premier à ','first to ')+WIN_PTS,'rgba(255,255,255,.5)',12,600]],0,sy);
+ // compte a rebours
+ const cy=ch+36,r=22,fr=st.t-Math.floor(st.t),n=Math.max(1,Math.ceil(st.t)),pz=1+.12*Math.max(0,fr-.75)*4;
+ g.beginPath();g.arc(0,cy,r+4,0,7);g.fillStyle='rgba(8,12,22,.8)';g.fill();g.lineWidth=3;g.strokeStyle='rgba(255,255,255,.15)';g.beginPath();g.arc(0,cy,r,0,7);g.stroke();
+ g.strokeStyle=col;g.lineCap='round';g.beginPath();g.arc(0,cy,r,-Math.PI/2,-Math.PI/2+Math.PI*2*fr);g.stroke();g.lineCap='butt';
+ g.save();g.translate(0,cy);g.scale(pz,pz);txt(n,0,1,24,'#fff',null,800);g.restore();
+ g.restore();return(ch+70)*k}
+// fin de manche : MANCHE GAGNEE / PERDUE, raison expliquee, score, role de la manche suivante
+const REASON={'Défenseurs éliminés':['Tous les défenseurs ont été éliminés','All defenders were eliminated'],'Attaquants éliminés':['Tous les attaquants ont été éliminés','All attackers were eliminated'],
+ 'Explosion !':['La bombe a explosé','The bomb exploded'],'Bombe désamorcée':['La bombe a été désamorcée','The bomb was defused'],'Temps écoulé':['Temps écoulé : la bombe n\'a pas été posée','Time is up: the bomb was not planted']};
+function drawRoundResult(mt,top){const w=st.w,win=w===mt,col=win?ROLEC.win:ROLEC.lose,el=Math.max(0,4.5-st.t),a=Math.min(1,el/.25)*Math.min(1,st.t/.4),
+ cw=Math.min(W-28,440),TS_=Math.round(Math.max(26,Math.min(40,cw*.088))),ch=TS_+122,lim=H*.6-top,k=Math.max(.85,Math.min(1,lim/ch));
+ g.save();g.globalAlpha=a;g.translate(W/2,top);g.scale(k,k);const x=-cw/2;card(x,0,cw,ch,col);
+ const pop=el<.3?1+.25*(1-el/.3):1,ty=16+TS_*.62;g.save();g.translate(0,ty);g.scale(pop,pop);g.letterSpacing='1px';txt(win?LG('MANCHE GAGNÉE','ROUND WON'):LG('MANCHE PERDUE','ROUND LOST'),0,1,TS_,col,null,800);g.letterSpacing='0px';g.restore();
+ const R=REASON[(st.msg||'').split(' — ')[0]],ry=ty+TS_*.55+16;
+ segs([[LG('Les ','')+TD(w).nom,TD(w).css,15,800],[LG(' marquent le point',' score the point'),'rgba(255,255,255,.9)',15,600]],0,ry);
+ if(R)txt(LG(R[0],R[1]),0,ry+22,13.5,'rgba(255,255,255,.68)',null,500);
+ const sy=ch-24;g.fillStyle='rgba(255,255,255,.1)';g.fillRect(x+18,sy-19,cw-36,1);
+ const over=score[0]>=WIN_PTS||score[1]>=WIN_PTS||round>=MAX_ROUNDS,nat=(round+1)%2?0:1,nextAt=nat===mt;
+ const sc=[[String(score[0]),TD(0).css,18,800],[' – ','#fff',18,800],[String(score[1]),TD(1).css,18,800]];
+ if(over)segs(sc.concat([['      '+LG('Fin de la partie','Game over'),'rgba(255,255,255,.7)',13,700]]),0,sy);
+ else segs(sc.concat([['      '+LG('Manche suivante : ','Next round: '),'rgba(255,255,255,.6)',13,600],[nextAt?LG('vous ATTAQUEZ','you ATTACK'):LG('vous DÉFENDEZ','you DEFEND'),nextAt?ROLEC.a:ROLEC.d,13,800]]),0,sy);
+ g.restore()}
+
 // ---------- etincelles quand une balle touche du metal ----------
 let SPK=null,SPKF=null,lastTink=0;const TINK_R=150;   // impacts audibles seulement tres pres du joueur
 function sparkInit(){SPK=[];SPKF=[];const g=new THREE.BoxGeometry(7,1.2,1.2);
@@ -2067,17 +2140,17 @@ for(const e of E){const t=e.team,i=e.id-(t?TS:0),ally=t===mt;let x,y;
  else{y=py+ph+5;x=t===0?pcx-5-(TS-i)*(cw+3)+3:pcx+5+i*(cw+3)}
  pcard(x,y,cw,chh,e,ally,e.id===localSlot);if(ally)CARDR.push([x,y,cw,chh,e.id]);if(ally&&e.id===specId&&isSpectating()){g.lineWidth=2;g.strokeStyle='#ffd27a';g.beginPath();g.roundRect?g.roundRect(x-2,y-2,cw+4,chh+4,7):g.rect(x-2,y-2,cw+4,chh+4);g.stroke()}}
 const HB=py+ph+(side?0:chh+6);
-const inGame=!!(menu.classList&&menu.classList.contains&&menu.classList.contains('hidden'))&&st.s!=='end';if(quitBtn&&quitBtn.style){quitBtn.style.display=inGame?'flex':'none';quitBtn.style.top=narrow?(HB+8)+'px':'calc(10px + env(safe-area-inset-top,0px))'}
+const inGame=!!(menu.classList&&menu.classList.contains&&menu.classList.contains('hidden'))&&st.s!=='end';if(quitBtn&&quitBtn.style){quitBtn.style.display=inGame?'flex':'none';quitBtn.style.top=narrow?(HB+40+(CUR.FLAG?24:0))+'px':'calc(10px + env(safe-area-inset-top,0px))'}
 txt(score[0],px+32,py+ph/2+1,22,TD(0).txt,null,700);txt(score[1],px+pw-32,py+ph/2+1,22,TD(1).txt,null,700);
 txt(live?Math.ceil(Math.max(0,bomb.t)):Math.floor(cl/60)+':'+String(cl%60).padStart(2,'0'),pcx,py+ph/2+1,18,live?'#ff6a5a':'#fff',null,700);
-txt(bomb.planted?(bomb.defused?'Bombe désamorcée · site ':'Bombe posée · site ')+SITES[bomb.site].n:'Bombe non posée',pcx,HB+10,11,live?'#ff8a7a':'rgba(255,255,255,.6)',null,500);
-if(CUR.FLAG){const fy=HB+26,fc=FLG.cap>=0?TD(FLG.cap).css:(FLG.tm<0?'rgba(255,255,255,.55)':TD(FLG.tm).css);
+const CMPB=narrow?10+MMH+12+2*(MMW>150?34:30)+10:0,RCH=st.s==='live'?drawRoleChip(pcx,HB+4,mt,narrow?pw:Math.min(W-40,420))+8:0,HB2=HB+RCH+(CUR.FLAG?24:0);
+if(CUR.FLAG){const fy=HB+RCH+12,fc=FLG.cap>=0?TD(FLG.cap).css:(FLG.tm<0?'rgba(255,255,255,.55)':TD(FLG.tm).css);
  if(FLG.cap>=0)txt('Drapeau : '+TD(FLG.cap).nom+(FLG.cap===mt?' · bonus actif':''),pcx,fy,11,fc,null,600);
  else if(FLG.p>0){const w=110;pill(pcx-w/2,fy-3,w,5,3,'rgba(255,255,255,.18)');pill(pcx-w/2,fy-3,w*FLG.p/FLAG_T,5,3,fc);txt(FLG.fast&&FLG.rt>=0?'Reprise rapide ×1,5':'Drapeau '+Math.ceil(FLAG_T-FLG.p)+' s',pcx,fy+11,10,FLG.fast&&FLG.rt>=0?'#ffb04a':fc,null,FLG.fast&&FLG.rt>=0?800:600)}
  else txt('Drapeau libre',pcx,fy,11,'rgba(255,255,255,.5)',null,500)}
-if(st.s==='freeze'){const FY0=Math.max(H*.3,HB+(CUR.FLAG?100:80));txt(Math.ceil(st.t),W/2,FY0,46,'#fff',null,700);txt(atk==mt?'ATTAQUE':'DÉFENSE',W/2,FY0+36,14,atk==mt?'#ffc83c':'#7fb0ff',null,700);txt((round===1?'Préparation… ':'')+'Manche '+round+' / '+MAX_ROUNDS+'  ·  '+WIN_PTS+' points pour gagner',W/2,FY0-42,13,'rgba(255,255,255,.55)',null,500);if(round==1&&!IS_PC)txt('Stick gauche : bouger · Stick droit : viser et tirer',W/2,FY0+60,12,'rgba(255,255,255,.55)',null,500)}
-else if(st.s==='live'){const MY0=Math.max(H*.2,HB+(CUR.FLAG?58:36),narrow?10+MMH+12+2*(MMW>150?34:30)+30:0);let tt=st.msg||'';if(!tt&&atk==mt&&!bomb.planted&&bomb.car<0)tt=bomb.drop?'Bombe au sol — récupère-la':'Ramasse la bombe';if(tt){g.font='600 13px system-ui';const w=g.measureText(tt).width+26;pill(W/2-w/2,MY0-14,w,28,14,'rgba(8,12,22,.7)');txt(tt,W/2,MY0+1,13)}}
-if(st.s==='over'){const OY0=Math.max(H*.24,HB+(CUR.FLAG?78:58));txt(TD(st.w).court,W/2,OY0,40,TD(st.w).css,null,800);txt('remporte la manche',W/2,OY0+30,14,'rgba(255,255,255,.85)',null,500);txt((st.msg||'').split(' — ')[0],W/2,OY0+52,12,'rgba(255,255,255,.55)',null,500)}
+if(st.s==='freeze'){const FY0=Math.max(H*.16,HB2+14,CMPB),hh=drawRoundIntro(mt,FY0);if(round==1&&!IS_PC&&FY0+hh+4<H-80)txt(LG('Stick gauche : bouger · Stick droit : viser et tirer','Left stick: move · Right stick: aim and shoot'),W/2,FY0+hh+4,13,'rgba(255,255,255,.75)',null,600)}
+else if(st.s==='live'){const MY0=Math.max(H*.2,HB2+30,narrow?10+MMH+12+2*(MMW>150?34:30)+30:0);let tt=st.msg||'';if(!tt&&atk==mt&&!bomb.planted&&bomb.car<0)tt=bomb.drop?'Bombe au sol — récupère-la':'Ramasse la bombe';if(tt){g.font='700 15px system-ui';const w=g.measureText(tt).width+34;pill(W/2-w/2,MY0-17,w,34,17,'rgba(8,12,22,.8)');txt(tt,W/2,MY0+1,15,'#fff',null,700)}}
+if(st.s==='over')drawRoundResult(mt,Math.max(H*.12,HB2+12,CMPB));
 drawGrenAim(hm);drawCompass(hm,side?px-6-TS*(cw+3):px);drawBoostNotif(hm);drawHitFx(hm);drawSpectate();
 if(IS_PC&&st.s!=='end'){
  // affichage automatique : une seule fois, au debut de la toute premiere manche ; ensuite seulement en maintenant C
