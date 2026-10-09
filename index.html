@@ -1888,10 +1888,55 @@ function drawCompass(hm,lim){if(!hm||!E)return;const R=MMW>150?34:30,gap=(lim||0
  g.fillStyle='#ff5a4a';g.beginPath();g.arc(cx,cy,2.4,0,7);g.fill();g.restore()}
 // ---------- notification du boost du drapeau ----------
 let boostSeen=0,boostNotif=-1,boostRound=0;
+// ---------- ATH du bas : vie (PV exacts + bonus du drapeau), munitions, grenade, bonus actifs ----------
+let athGhost=0,athTop=0;
+function icoHeart(x,y,r,c){g.save();g.fillStyle=c;g.beginPath();g.moveTo(x,y+r*.9);g.bezierCurveTo(x-r*1.3,y,x-r*.9,y-r*1.05,x,y-r*.35);g.bezierCurveTo(x+r*.9,y-r*1.05,x+r*1.3,y,x,y+r*.9);g.fill();g.restore()}
+function icoCross(x,y,r,c){g.fillStyle=c;const a=r*.36;g.beginPath();g.roundRect?g.roundRect(x-a,y-r,a*2,r*2,a*.6):g.rect(x-a,y-r,a*2,r*2);g.fill();g.beginPath();g.roundRect?g.roundRect(x-r,y-a,r*2,a*2,a*.6):g.rect(x-r,y-a,r*2,a*2);g.fill()}
+function icoBullets(x,y,r,c){g.fillStyle=c;for(let k=-1;k<=1;k++){const bx=x+k*r*.62-r*.2;g.beginPath();g.moveTo(bx,y-r*.95);g.quadraticCurveTo(bx+r*.42,y-r*.6,bx+r*.4,y-r*.25);g.lineTo(bx+r*.4,y+r*.9);g.lineTo(bx-r*.0,y+r*.9);g.lineTo(bx,y-r*.95);g.closePath();g.fill()}}
+function icoSpeed(x,y,r,c){g.save();g.strokeStyle=c;g.lineWidth=Math.max(2,r*.32);g.lineCap='round';g.lineJoin='round';for(const dx of[-r*.55,r*.35]){g.beginPath();g.moveTo(x+dx-r*.35,y-r*.7);g.lineTo(x+dx+r*.3,y);g.lineTo(x+dx-r*.35,y+r*.7);g.stroke()}g.restore()}
+function drawATH(hm,narrow){const sc=W<420?.92:(W>=1100&&H>=650?1.12:1),pw=Math.min(W-24,380*sc),ph=66*sc,px=W/2-pw/2,py=H-ph-(narrow?26:14),mx=(hm.boost||hm.hp>BASE_HP)?BOOST_HP:BASE_HP,hp=Math.max(0,Math.min(mx,hm.hp)),fr=hp/mx;
+ if(hp>athGhost)athGhost=hp;else athGhost=Math.max(hp,athGhost-mx*.9*(gdt||.016));athTop=py;
+ const low=fr<=.3,hc=fr>.5?'#4fd37a':(fr>.3?'#ffc83c':'#ff5a4a'),now=performance.now();
+ // fond
+ pill(px,py,pw,ph,14,'rgba(8,12,22,.8)');g.save();g.lineWidth=1.5;g.strokeStyle=low?'rgba(255,90,74,'+(.45+.4*Math.sin(now/180))+')':(hm.boost?'rgba(255,200,60,.55)':'rgba(255,255,255,.1)');
+ g.beginPath();g.roundRect?g.roundRect(px+.75,py+.75,pw-1.5,ph-1.5,14):g.rect(px,py,pw,ph);g.stroke();g.restore();
+ // ---- vie
+ const lw=pw*.6,bx=px+14,bw=lw-26,bh=11*sc,by=py+ph-bh-12*sc,ty=py+21*sc;
+ icoCross(bx+8*sc,ty,8*sc,hc);
+ g.font='800 '+Math.round(26*sc)+'px system-ui';const hs=String(Math.ceil(hp)),hw=g.measureText(hs).width;
+ txt(hs,bx+22*sc,ty+1,Math.round(26*sc),low?'#ff7a6a':'#fff','left',800);txt('/ '+mx,bx+22*sc+hw+5,ty+3,Math.round(13*sc),'rgba(255,255,255,.55)','left',600);
+ txt(LG('PV','HP'),bx+bw,ty+2,Math.round(11*sc),'rgba(255,255,255,.45)','right',700);
+ pill(bx,by,bw,bh,bh/2,'rgba(255,255,255,.1)');
+ g.save();g.beginPath();g.roundRect?g.roundRect(bx,by,bw,bh,bh/2):g.rect(bx,by,bw,bh);g.clip();
+ g.fillStyle='rgba(255,255,255,.4)';g.fillRect(bx,by,bw*athGhost/mx,bh);                     // degats recents (traine blanche)
+ const base=Math.min(hp,BASE_HP),gr=g.createLinearGradient(0,by,0,by+bh);gr.addColorStop(0,hc);gr.addColorStop(1,low?'#c0392b':(fr>.5?'#2fa85a':'#d99a1e'));
+ g.fillStyle=gr;g.fillRect(bx,by,bw*base/mx,bh);
+ if(mx>BASE_HP){const x0=bx+bw*BASE_HP/mx;if(hp>BASE_HP){const gg=g.createLinearGradient(0,by,0,by+bh);gg.addColorStop(0,'#ffd86a');gg.addColorStop(1,'#e0a020');g.fillStyle=gg;g.fillRect(x0,by,bw*(hp-BASE_HP)/mx,bh)}
+  g.fillStyle='rgba(8,12,22,.9)';g.fillRect(x0-1,by,2,bh)}                                  // repere : au-dela = bonus du drapeau
+ g.fillStyle='rgba(8,12,22,.45)';for(let v=30;v<mx;v+=30){if(mx>BASE_HP&&v===BASE_HP)continue;g.fillRect(bx+bw*v/mx-.5,by,1,bh)}
+ g.fillStyle='rgba(255,255,255,.18)';g.fillRect(bx,by,bw,bh*.35);g.restore();
+ // separation
+ g.fillStyle='rgba(255,255,255,.1)';g.fillRect(px+lw,py+12,1,ph-24);
+ // ---- munitions + grenade
+ const ax=px+lw+14,aw=pw-lw-28;
+ if(hm.rl>0){txt(LG('RECHARGE','RELOADING'),ax,ty+1,Math.round(14*sc),'#ffc83c','left',800);pill(ax,by,aw,bh,bh/2,'rgba(255,255,255,.1)');pill(ax,by,Math.max(bh,aw*(1-hm.rl/2)),bh,bh/2,'#ffc83c')}
+ else{const lowA=hm.ammo<=8;g.font='800 '+Math.round(26*sc)+'px system-ui';const aws=g.measureText(String(hm.ammo)).width;
+  txt(hm.ammo,ax,ty+1,Math.round(26*sc),lowA?'#ff8a6a':'#fff','left',800);txt('/ ∞',ax+aws+5,ty+3,Math.round(13*sc),'rgba(255,255,255,.5)','left',600);
+  // chargeur : une petite barre par balle (30)
+  const n=30,gap=1.5,cw_=(aw-gap*(n-1))/n;for(let k=0;k<n;k++){g.fillStyle=k<hm.ammo?(lowA?'#ff8a6a':'rgba(255,236,190,.9)'):'rgba(255,255,255,.12)';g.fillRect(ax+k*(cw_+gap),by,cw_,bh)}}
+ icoGren(px+pw-30*sc,ty,10*sc,hm.gren>0);
+ // ---- bonus du drapeau au-dessus de la barre : symboles clairs
+ if(hm.boost){const items=[[icoHeart,'+25 %',LG('PV','HP'),'#ff6b81'],[icoBullets,'+30 %',LG('cadence','fire rate'),'#ffc83c'],[icoSpeed,'+20 %',LG('vitesse','speed'),'#5fd7ff']];
+  const fs=Math.round(12*sc),chh=24*sc,cy=py-chh/2-6;let tot=0;const ws=items.map(it=>{g.font='800 '+fs+'px system-ui';const a=g.measureText(it[1]).width;g.font='600 '+fs+'px system-ui';const b=W<420?0:g.measureText(' '+it[2]).width;return 30*sc+a+b+10});
+  tot=ws.reduce((a,b)=>a+b,0)+(ws.length-1)*6+chh+6;let x=W/2-tot/2;
+  pill(x,cy-chh/2,chh,chh,chh/2,'rgba(224,64,47,.28)');icoFlag(x+chh/2,cy,8*sc);x+=chh+6;
+  items.forEach((it,k)=>{const w=ws[k];pill(x,cy-chh/2,w,chh,chh/2,'rgba(8,12,22,.82)');g.save();g.lineWidth=1.2;g.strokeStyle=hexA(it[3],.6);g.beginPath();g.roundRect?g.roundRect(x+.6,cy-chh/2+.6,w-1.2,chh-1.2,chh/2):g.rect(x,cy-chh/2,w,chh);g.stroke();g.restore();
+   it[0](x+14*sc,cy,6.5*sc,it[3]);g.font='800 '+fs+'px system-ui';const a=g.measureText(it[1]).width;txt(it[1],x+25*sc,cy+1,fs,it[3],'left',800);if(W>=420)txt(' '+it[2],x+25*sc+a,cy+1,fs,'rgba(255,255,255,.85)','left',600);x+=w+6})}
+}
 function drawBoostNotif(hm){if(!hm)return;if(round!==boostRound){boostRound=round;boostSeen=hm.boost?1:0}
  if(hm.boost&&!boostSeen){boostSeen=1;boostNotif=performance.now();boostSnd()}if(!hm.boost)boostSeen=0;
  if(boostNotif<0)return;const t=(performance.now()-boostNotif)/1000;if(t>4.6){boostNotif=-1;return}
- const a=t<.3?t/.3:(t>4?Math.max(0,(4.6-t)/.6):1),sc=t<.3?.85+.15*(t/.3):1,bw=Math.min(W-30,360),bh=96,cx=W/2,cy=H-82-bh/2;   // en bas de l'ecran, juste au-dessus des munitions et de la vie
+ const a=t<.3?t/.3:(t>4?Math.max(0,(4.6-t)/.6):1),sc=t<.3?.85+.15*(t/.3):1,bw=Math.min(W-30,360),bh=96,cx=W/2,cy=(athTop||H-82)-40-bh/2;   // en bas de l'ecran, juste au-dessus des munitions et de la vie
  g.save();g.globalAlpha=a;g.translate(cx,cy);g.scale(sc,sc);
  pill(-bw/2,-bh/2,bw,bh,14,'rgba(8,12,22,.88)');g.lineWidth=2;g.strokeStyle='#e0402f';g.beginPath();g.roundRect?g.roundRect(-bw/2+1,-bh/2+1,bw-2,bh-2,14):g.rect(-bw/2,-bh/2,bw,bh);g.stroke();
  icoFlag(-bw/2+30,-bh/2+26,11);txt('BOOST DU DRAPEAU OBTENU',-bw/2+50,-bh/2+26,15,'#ffd9a0','left',800);
@@ -1941,7 +1986,7 @@ function keycap(x,y,t,w){w=w||Math.max(26,(g.font='700 12px system-ui',g.measure
  g.fillStyle='rgba(255,255,255,.35)';g.fillRect(x+4,y+21,w-8,1);txt(t,x+w/2,y+12,12,'#fff',null,700);return w}
 function drawControls(a){if(a<=0)return;g.save();g.globalAlpha=a;
  // panneau en bas a gauche ; il se reduit si l'ecran est etroit pour ne pas toucher la barre de vie au centre
- const bw=440,bh=236,sc=Math.max(.6,Math.min(1,(W/2-110)/bw,(H*.45)/bh));g.translate(12,H-12-bh*sc);g.scale(sc,sc);
+ const bw=440,bh=236,sc=Math.max(.6,Math.min(1,(W/2-240)/bw,(H*.45)/bh));g.translate(12,H-12-bh*sc);g.scale(sc,sc);
  pill(0,0,bw,bh,14,'rgba(6,10,18,.84)');g.lineWidth=1;g.strokeStyle='rgba(255,255,255,.18)';g.beginPath();g.roundRect?g.roundRect(.5,.5,bw-1,bh-1,14):g.rect(0,0,bw,bh);g.stroke();
  txt('COMMANDES',bw/2,18,12,'rgba(255,255,255,.6)',null,800);
  const L=18,R=bw-18;let y=34;
@@ -2158,13 +2203,11 @@ if(IS_PC&&st.s!=='end'){
  const auto=ctrlDone?0:(st.s==='freeze'?1:(st.s==='live'?Math.min(1,5-(130-st.clock)):0));
  drawControls(keys['c']?1:auto)}
 // ecran de fin dessine en dernier, par-dessus tout le reste ; boutons tactiles caches pendant ce temps
-{const endV=st.s==='end'?'hidden':'visible';if(rb&&rb.style)rb.style.visibility=endV;if(gb_&&gb_.style)gb_.style.visibility=endV}
+{const endV=st.s==='end'?'hidden':'visible';if(rb&&rb.style)rb.style.visibility=IS_PC?'hidden':endV;if(gb_&&gb_.style)gb_.style.visibility=IS_PC?'hidden':endV}
 if(st.s==='end')drawEndScreen();
 
-if(hm&&st.s!=='end'){const hp=Math.max(0,hm.hp)/(hm.maxhp||BASE_HP),bw=170,bx=W/2-bw/2;
- if(hm.boost&&hm.alive){const fx=bx-30,fyy=H-26;g.strokeStyle='#f0f0ec';g.lineWidth=2;g.beginPath();g.moveTo(fx,fyy-8);g.lineTo(fx,fyy+8);g.stroke();g.fillStyle='#e0402f';g.beginPath();g.moveTo(fx+1,fyy-8);g.lineTo(fx+12,fyy-4);g.lineTo(fx+1,fyy);g.fill();txt('BOOST',fx-6,fyy-14,9,'#ff8a7a','right',700)}pill(bx,H-20,bw,6,3,'rgba(255,255,255,.14)');pill(bx,H-20,Math.max(4,bw*hp),6,3,hp>.5?'#4fd37a':(hp>.25?'#ffc83c':'#ff5a4a'));
- if(hm.rl>0){txt('RECHARGE',W/2,H-46,14,'#ffc83c',null,700);pill(bx,H-34,Math.max(2,bw*(1-hm.rl/2)),3,2,'#ffc83c')}else{txt(hm.ammo,W/2-4,H-44,28,hm.ammo<=8?'#ff8a6a':'#fff','right',700);txt('/ ∞',W/2,H-42,14,'rgba(255,255,255,.5)','left',500);icoGren(W/2+58,H-45,9,hm.gren>0)}
- if(gb_&&gb_.classList)gb_.classList.toggle('vide',!(hm&&hm.gren>0));}
+if(hm&&st.s!=='end'&&hm.alive)drawATH(hm,narrow);
+if(gb_&&gb_.classList)gb_.classList.toggle('vide',!(hm&&hm.gren>0));
 if(bomb.prog>0&&(bomb.planted?mt!==atk:mt===atk)){const w=120;pill(W/2-w/2,H*.62,w,5,3,'rgba(255,255,255,.18)');pill(W/2-w/2,H*.62,w*bomb.prog,5,3,'#ffc83c');txt(bomb.planted?'Désamorçage':'Pose',W/2,H*.62-12,11,'rgba(255,255,255,.75)',null,500)}
 {let n=0;const y0=narrow?HB+50:54;for(let i=KL.length-1;i>=0&&n<3;i--){const q=KL[i];if(q.t!==undefined&&T-q.t>6)continue;const t_=NM[q.k]+(q.g?'  ✹  ':'  ✕  ')+NM[q.v];g.font='600 11px system-ui';const w=g.measureText(t_).width+18;pill(W-w-10,y0+n*22,w,18,9,'rgba(8,12,22,.68)');txt(t_,W-10-w/2,y0+n*22+10,11,CUR.theme==='desert'?TD(q.k<TS?0:1).css:((q.k<TS?0:1)==mt?'#a9c8ff':'#ffa9a9'),null,600);n++}}
 for(const id in P){const p=P[id];g.strokeStyle='#aaa';g.lineWidth=2;g.beginPath();g.arc(p.x0,p.y0,50,0,7);g.stroke();const dx=p.x-p.x0,dy=p.y-p.y0,h=Math.hypot(dx,dy)||1,k=Math.min(h,50)/h;g.fillStyle='#fff6';g.beginPath();g.arc(p.x0+dx*k,p.y0+dy*k,20,0,7);g.fill()}
