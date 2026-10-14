@@ -1,0 +1,40 @@
+# fly.toml app configuration file generated for detonate-prototype on 2026-10-12T20:07:09Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'detonate-prototype'
+primary_region = 'iad'
+kill_signal = 'SIGINT'
+kill_timeout = '10s'
+
+[build]
+
+[env]
+  PORT = '8080'
+  REGIONS = 'cdg,lax,iad,sin'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = 'connections'
+    hard_limit = 250
+    soft_limit = 200
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/health'
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512
