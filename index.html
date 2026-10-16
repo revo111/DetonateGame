@@ -2004,7 +2004,8 @@ addEventListener('pointerdown',audioInit);addEventListener('keydown',audioInit);
 // ---------- input ----------
 const P={},keys={},mouse={down:0};
 addEventListener('keydown',e=>{if(e.code==='Tab'){e.preventDefault();SBK=1}});addEventListener('keyup',e=>{if(e.code==='Tab')SBK=0});addEventListener('blur',()=>{SBK=0});
-addEventListener('pointerdown',e=>{if(e.target.tagName==='BUTTON')return;if(isSpectating()){const hitR=r=>e.clientX>=r[0]&&e.clientX<=r[0]+r[2]&&e.clientY>=r[1]&&e.clientY<=r[1]+r[3];
+addEventListener('pointerdown',e=>{if(e.target.tagName==='BUTTON'||(e.target.closest&&e.target.closest('a')))return;   // un lien (ex. X du fondateur) doit garder son clic
+if(isSpectating()){const hitR=r=>e.clientX>=r[0]&&e.clientX<=r[0]+r[2]&&e.clientY>=r[1]&&e.clientY<=r[1]+r[3];
  for(const r of SPECR)if(hitR(r)){specCycle(r[4]);return}for(const r of CARDR)if(hitR(r)&&E[r[4]]&&E[r[4]].alive&&E[r[4]].team===MT&&r[4]!==localSlot){specId=r[4];return}}try{cv.setPointerCapture(e.pointerId)}catch(x){}if(st.s==='end'){const hb=ENDR.find(r=>e.clientX>=r[0]&&e.clientX<=r[0]+r[2]&&e.clientY>=r[1]&&e.clientY<=r[1]+r[3]);if(!hb)return;
  const nw=performance.now();if(ENDP&&nw-ENDP.t<450)return;ENDP={k:hb[4],t:nw};uiClick();
  if(hb[4]==='q'){try{if(netMode)sendNet({type:'leave'})}catch(_){}setTimeout(()=>location.reload(),netMode?250:200);return}
