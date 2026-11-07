@@ -3322,7 +3322,7 @@ e.lost=0;
  for(const g0 of GR){const gx_=g0.land?g0.x:g0.tx,gy_=g0.land?g0.y:g0.ty,dx=e.x-gx_,dy=e.y-gy_,d=Math.hypot(dx,dy);
   // une grenade au sol se voit : l'esquive devient tres probable ; en vol, seulement une fois sur deux
   if(d<GR_R+30&&g0.t>g0.T*.6&&(g0.land?((g0.sv2=g0.sv2||{})[e.id]??(g0.sv2[e.id]=Math.random()<.65)):((g0.sv=g0.sv||{})[e.id]??(g0.sv[e.id]=Math.random()<.5)))){const a=Math.atan2(dy,dx);let best=null;for(const da of[0,.6,-.6,1.2,-1.2]){const ax=Math.cos(a+da),ay=Math.sin(a+da);if(!hit(e.x+ax*30,e.y+ay*30,12)){best=[ax,ay];break}}if(best){mx=best[0];my=best[1]}break}}
- if(WARM()&&WV.length){const r_=wDodge(e);if(r_){mx=r_[0];my=r_[1];e.nudge=0}}let df=e.want-e.ang;df=Math.atan2(Math.sin(df),Math.cos(df));e.ang+=Math.max(-13*dt,Math.min(13*dt,df))}
+ if(WARM()&&WV.length){const r_=wDodge(e);if(r_){mx=r_[0];my=r_[1];e.nudge=0}else if(mx||my){const r2=wFootAvoid(e,mx,my);if(r2){mx=r2[0];my=r2[1]}}}let df=e.want-e.ang;df=Math.atan2(Math.sin(df),Math.cos(df));e.ang+=Math.max(-13*dt,Math.min(13*dt,df))}
 if(!e.p&&e.sco===1&&st.s==='live'){const s_=scoOf(e),pe=e.path&&e.path.length?e.path[e.path.length-1]:null;
  if(s_&&pe&&s_.fuel>0){let tx_=pe[0],ty_=pe[1];if(!e.vvia||Math.hypot(e.vvia.dx-pe[0],e.vvia.dy-pe[1])>60)e.vvia={dx:pe[0],dy:pe[1],p:vanVia(e,pe)};
   {const vp=e.vvia.p;if(vp){if(Math.hypot(vp[0]-e.x,vp[1]-e.y)<230)e.vvia.p=null;else{tx_=vp[0];ty_=vp[1]}}}
@@ -3348,7 +3348,7 @@ if(e.nudge>0){e.nudge-=dt;mx=e.nx;my=e.ny}{const ox=e.x,oy=e.y;
    // on cherche la direction libre la plus proche de l'objectif au lieu d'un cap au hasard
    const a0=Math.atan2(my,mx)||e.want;let best=null,bs=-1;
    for(let t=-2.6;t<=2.6;t+=.45){const ax=Math.cos(a0+t),ay=Math.sin(a0+t);let sc2=0;
-    for(const r of[24,48,72,96])if(!hit(e.x+ax*r,e.y+ay*r,12))sc2++;else break;
+    for(const r of[24,48,72,96])if(!hit(e.x+ax*r,e.y+ay*r,12)&&!(WARM()&&wvAt(e.x+ax*r,e.y+ay*r,14)))sc2++;else break;
     sc2-=Math.abs(t)*.3;if(sc2>bs){bs=sc2;best=[ax,ay]}}
    if(bs<=0){const a=Math.random()*6.28;best=[Math.cos(a),Math.sin(a)];e.nudge=.7}
    e.nx=best[0];e.ny=best[1];e.dx=best[0];e.dy=best[1];e.tk=0;e.tag=''}}else e.stk=0}e.ph+=(e.wv>=0||e.wl>=0?0:Math.min(1,len))*dt*9;e.mvn=e.wv>=0||e.wl>=0?0:len;
@@ -3365,7 +3365,7 @@ if(CANS.length&&canBullet(b)){b.t=0;break}
 if(WARM()&&wBullet(b)){b.t=0;vanImpact(b);break}if(SC.length){const vb=vanBullet(b);if(vb){b.t=0;const dr=vb.cab&&E[vb.s.drv];if(dr&&dr.alive&&dr.team!==b.team){hurt(dr,30,b.id);vanImpact(b,1)}else vanImpact(b);break}}
 for(const e of E)if(e.alive&&e.team!=b.team&&(e.x-b.x)**2+(e.y-b.y)**2<144){hurt(e,34,b.id);b.t=0;break}}b.t-=dt;if(b.t<=0)b.m.visible=false}
 let bw=0;for(let bi=0;bi<B.length;bi++){const b=B[bi];if(b.t>0)B[bw++]=b;else b.m.visible=false}B.length=bw;
-if(warm){bomb.prog=0;return}
+if(warm){bomb.prog=0;if(WARM())wNavWarm();return}
 flagUpdate(dt);updGren(dt);
 motoUpdate(dt);scoUpdate(dt);
 if(ZONEMODE()){zonesUpdate(dt);return}
@@ -7765,7 +7765,7 @@ const W_T=360,W_WIN=4,W_MAXR=7,W_TGHP=6,W_BRF=8,W_C4F=1.5,W_C4TB=1.2,W_C4TV=.7,W
 const W_C4TT=2,W_C4FT=3,W_MSD=2;   // C4 sur une antenne / un lance-missiles : 2 s de pose, explosion 3 s plus tard, 1 case ; missile : 2 cases
 const WTK={sp:76,turn:.8,trt:1.5,rl:8,range:1150,shv:1500,len:200,wid:112,r:52,c:[-50,0,50],piv:6,gun:-14,mz:178,acc:110};   // dimensions du char (collision : 3 cercles le long de la caisse)
 const WJP={sp:135,turn:2.3,trt:6,len:124,wid:68,r:34,c:[-30,30],hp:4,piv:-16,gun:0,cd:.15,resp:20,mz:36,acc:214};   // vitesse 135 (159 - 15 %)
-let WV=[],WSt={tg:[],br:[],c4:[],sh:[],ev:[],evU:0,shU:0,kd:[0,0],dmg:[0,0],sig:'',rnd:-1,ms:[],msU:0,mcd:[0,0],scd:[0,0],rv:[0,0],bx:[]},WLEV=0,WNAV={};
+let WV=[],WSt={tg:[],br:[],c4:[],sh:[],ev:[],evU:0,shU:0,kd:[0,0],dmg:[0,0],sig:'',rnd:-1,ms:[],msU:0,mcd:[0,0],scd:[0,0],rv:[0,0],bx:[]},WLEV=0,WNAV=new Map();
 const WP=v=>v.k==='tank'?WTK:WJP;
 const W_JV=['convoi','eclaireur','garde','reco'],W_JOB={convoi:['front','rear'],eclaireur:['front','scout'],garde:['flank','def'],reco:['scout','rear']};
 // travail du 4x4 selon la variante de son equipe (n°1 / n°2 du camp)
@@ -7774,6 +7774,11 @@ const wBrReq=i=>((wDeco().bridges||[])[i]||{}).k==='road'?3:1;   // C4 necessair
 const wDeco=()=>(CUR&&CUR.DECO)||{};
 const wHost=()=>!netMode||isHost||HEADLESS;
 // ----- debut de manche : cibles tirees au sort dans le camp de chaque equipe, vehicules au garage
+// formes d'objet stables : toutes les proprietes ajoutees en cours de partie existent des le depart (meme ordre pour tous)
+// -> le moteur JavaScript ne recompile plus sans cesse le code des bots et des vehicules (gros gain de CPU sur le serveur)
+const WVK=['job','trl','sp','prx','pry','prT','cmp','bdA','zr','bx','by','bk','stopT','st8','goal','lane','nF','nFT','nd','noUT','sA','sAT','bdC','bdE','gsT','jm','tkS','fm','cw','eg','pgK','pgD','pgT','nst','esK','esI','esB','esR','fvy','fvx','tkL','wp','scT','escM','brev','lf','av','utS','fpBad','wgo','lnB','scrS','scrC','bp','hld','blk','blkT','abT','fp','circT','ow','bad','badT','bT','dryT','pkS','swB'],
+ WEK=['wdx','wdy','wdN','ejp','bold','wPull','dfR','look','dx','dy','c4tP','wDg','wDgT','nudge','asT','nx','ny','sw','swa','thr_','wLA','hitF','body','zl','cov','c4z','sco','scI','rsp','wlT','ejV','wRam','gcd','noVI','noVT','vdt','hlp'];
+function wShape(L,K){for(const o of L)for(const k of K)if(!(k in o))o[k]=undefined}
 function warReset(){WSt.bars=null;st.clock=W_T;st.msg='';WSt.c4=[];WSt.sh=[];WSt.ev=[];WSt.kd=[0,0];WSt.dmg=[0,0];WSt.kt=[0,0];WSt.ms=[];WSt.mcd=[T,T];WSt.scd=[T,T];WSt.rv=[0,0];WSt.bj=[null,null];WSt.pre=[0,0];WSt.bx=[];const D=wDeco();
  WSt.br=(D.bridges||[]).map(()=>({st:0,c4:0,f:-1,lk:-1}));
  if(wHost()){WSt.tg=[];for(const t of[0,1]){const g=spawnGroup(t),S=(D.slots&&D.slots[g])||[],idx=S.map((_,i)=>i).sort(()=>Math.random()-.5).slice(0,4);let nA=0,nB=0;const KD=['A','B',Math.random()<.5?'A':'B',Math.random()<.5?'A':'B'].sort(()=>Math.random()-.5);
@@ -7786,6 +7791,7 @@ function warReset(){WSt.bars=null;st.clock=W_T;st.msg='';WSt.c4=[];WSt.sh=[];WSt
  // garde (flanc + defense des cibles), reco (reperage + derriere)
  WSt.jv=[0,1].map(()=>W_JV[Math.random()*W_JV.length|0]);for(const v of WV)if(v.k==='jeep')v.job=wJob(v);WSt.dth=[null,null];
  for(const e of E){e.wv=-1;e.ws=-1;e.wl=-1;e.c4=1;e.c4p=0;e.wAct=0;e.wrole='';e.noVeh=0}
+ wShape(WV,WVK);wShape(E,WEK)
  if(!HEADLESS&&typeof WAR!=='undefined')WSt.br.forEach((b,i)=>WAR.bridge(i,0));
  wApplyOB(1);wRoles()}
 // place du second 4x4 : symetrique du premier par rapport au tank (sinon la place libre la plus proche)
@@ -7797,14 +7803,14 @@ function wApplyOB(nav){OB=OB.filter(o=>o.t!=='X'&&!o.wbr);WSt.tg.forEach((q,i)=>
  const D=wDeco();WSt.br.forEach((b,i)=>{const B=D.bridges&&D.bridges[i];if(!B)return;if(b.st){for(const[x,y,w,h]of B.sl)OB.push({t:'u',x,y,w,h,wbr:1});return}
   // garde-corps (treillis du grand pont, cordes de la passerelle) : on ne passe plus au travers, meme au-dessus des berges
   const th=B.k==='road'?9:6;OB.push({t:'u',x:B.x0,y:B.y0-th,w:B.x1-B.x0,h:th-1,wbr:1},{t:'u',x:B.x0,y:B.y1+1,w:B.x1-B.x0,h:th-1,wbr:1})});
- buildGrid();if(nav&&wHost()){buildNav();WNAV={}}WSt.sig=wSig()}
+ buildGrid();if(nav&&wHost()){buildNav();WNAV=new Map()}WSt.sig=wSig()}
 function wSig(){return WSt.tg.map(q=>q.x+','+q.y+','+q.w).join('|')+'#'+WSt.br.map(b=>b.st).join('')}
 // roles des bots : tank (conducteur, tireur), 4x4 (conducteur, tireur), escorte, defense, attaque
 function wRoles(){for(const t of[0,1]){const B_=E.filter(e=>e.team===t&&!e.p).sort((a,b)=>a.id-b.id),R=['tdrv','tgun','def','jdrv','jgun','j2drv','j2gun','def','att','att','def','esc'];B_.forEach((e,i)=>e.wrole=R[i]||'att')}}
 // ----- geometrie des vehicules
 function wvDist(v,x,y){const P=WP(v),c=Math.cos(v.a),s=Math.sin(v.a),dx=x-v.x,dy=y-v.y,u=dx*c+dy*s,w=-dx*s+dy*c,cu=Math.max(-P.len/2,Math.min(P.len/2,u)),cw=Math.max(-P.wid/2,Math.min(P.wid/2,w));return Math.hypot(u-cu,w-cw)}
-const wSolid=v=>!(v.st&&v.k==='jeep'&&T>v.rsp-1);   // l'epave du 4x4 disparait juste avant sa reapparition
-function wvAt(x,y,r){for(const v of WV)if(wSolid(v)&&wvDist(v,x,y)<r)return v;return null}
+const wSolid=v=>!(v.st&&v.k==='jeep'&&(T>v.rsp-1||v.wgo));   // l'epave du 4x4 disparait juste avant sa reapparition
+function wvAt(x,y,r){for(const v of WV){if(v.x===undefined)continue;const P=WP(v),m=(P.len+P.wid)/2+r;if(Math.abs(v.x-x)>m||Math.abs(v.y-y)>m)continue;if(wSolid(v)&&wvDist(v,x,y)<r)return v}return null}
 // segment a-b coupe par un vehicule (on ignore ceux qui contiennent une extremite : le tireur sur son vehicule, la cible sur le sien)
 // sert a la vue (los) et a la ligne de tir : on ne voit pas et on ne tire pas a travers un tank ou un 4x4
 // strict : ligne de tir (seuls le vehicule du tireur et celui de la cible sont ignores)
@@ -7880,12 +7886,13 @@ function wBars(){if(WSt.bars&&WSt.bars.ww===WW)return WSt.bars;const D=wDeco(),G
   const R=[];for(const s_ of segs){const h=s_[1]===s_[3],lo=Math.min(h?s_[0]:s_[1],h?s_[2]:s_[3]),hi=Math.max(h?s_[0]:s_[1],h?s_[2]:s_[3]);let cuts=gates.filter(q=>q.h===h&&(h?Math.abs(q.y-s_[1])<2:Math.abs(q.x-s_[0])<2)).map(q=>h?q.x:q.y).sort((a,b)=>a-b),c0=lo;
    for(const c of cuts.concat([hi+W_GW/2])){const e=Math.min(hi,c-W_GW/2);if(e>c0+4)R.push(h?{x:c0,y:s_[1]-W_BT/2,w:e-c0,h:W_BT}:{x:s_[0]-W_BT/2,y:c0,w:W_BT,h:e-c0});c0=c+W_GW/2}}
   G_.push({g,R,gates:gates.map(q=>({x:q.x,y:q.y,h:q.h,r:q.h?{x:q.x-W_GW/2,y:q.y-W_BT/2,w:W_GW,h:W_BT}:{x:q.x-W_BT/2,y:q.y-W_GW/2,w:W_BT,h:W_GW}}))})}
+ for(const B of G_){let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const q of B.R.concat(B.gates.map(G=>G.r))){x0=Math.min(x0,q.x);y0=Math.min(y0,q.y);x1=Math.max(x1,q.x+q.w);y1=Math.max(y1,q.y+q.h)}B.bb=[x0,y0,x1,y1]}
  G_.ww=WW;return WSt.bars=G_}
 function wSegX(a,b,c,d){const r=[b[0]-a[0],b[1]-a[1]],q=[d[0]-c[0],d[1]-c[1]],den=r[0]*q[1]-r[1]*q[0];if(Math.abs(den)<1e-9)return null;const t=((c[0]-a[0])*q[1]-(c[1]-a[1])*q[0])/den,u=((c[0]-a[0])*r[1]-(c[1]-a[1])*r[0])/den;return t>=0&&t<=1&&u>=0&&u<=1?[a[0]+r[0]*t,a[1]+r[1]*t]:null}
 const wInR=(x,y,q,m)=>x>=q.x-m&&x<=q.x+q.w+m&&y>=q.y-m&&y<=q.y+q.h+m;
 // point (contour d'un vehicule de l'equipe tm) dans une barriere : dents de dragon pour tous, portails du camp ennemi
-function wBarPt(x,y,tm){if(!WARM())return false;for(const B of wBars()){for(const q of B.R)if(wInR(x,y,q,0))return true;if(B.g!==spawnGroup(tm))for(const G of B.gates)if(wInR(x,y,G.r,0))return true}return false}
-function wBarCirc(x,y,r,tm){if(!WARM())return false;for(const B of wBars()){for(const q of B.R)if(wInR(x,y,q,r))return true;if(B.g!==spawnGroup(tm))for(const G of B.gates)if(wInR(x,y,G.r,r))return true}return false}
+function wBarPt(x,y,tm){if(!WARM())return false;for(const B of wBars()){const b=B.bb;if(x<b[0]||y<b[1]||x>b[2]||y>b[3])continue;for(const q of B.R)if(wInR(x,y,q,0))return true;if(B.g!==spawnGroup(tm))for(const G of B.gates)if(wInR(x,y,G.r,0))return true}return false}
+function wBarCirc(x,y,r,tm){if(!WARM())return false;for(const B of wBars()){const b=B.bb;if(x<b[0]-r||y<b[1]-r||x>b[2]+r||y>b[3]+r)continue;for(const q of B.R)if(wInR(x,y,q,r))return true;if(B.g!==spawnGroup(tm))for(const G of B.gates)if(wInR(x,y,G.r,r))return true}return false}
 // ----- essence des 4x4 blindes : 1 min, consommee des qu'il y a quelqu'un a bord (a l'arret comme en roulant : on ne campe pas) -----
 // A sec : le 4x4 s'arrete, la tourelle n'a plus de courant, l'equipage descend (1 s apres) et on ne peut plus y remonter : on combat a pied.
 // Pas de plein : seul un 4x4 detruit revient plein a son garage (nouveau vehicule), et chaque manche repart avec le plein. Le tank n'a pas d'essence.
@@ -7893,12 +7900,14 @@ const W_FMAX=90,W_FIDLE=.4,W_DRYX=1.2,W_DRYR=45;   // a sec : retour au garage, 
    // 90 s a plein regime ; a l'arret, le moteur au ralenti consomme 40 %
 const wFuelV=v=>!!v&&v.k==='jeep';
 const wDry=v=>wFuelV(v)&&v.fu!==undefined&&v.fu<=0;
+// place de reapparition : le garage, sinon une place libre juste a cote (l'autre 4x4 peut etre gare dessus)
+function wGarage(v){const c=Math.cos(v.sa),s=Math.sin(v.sa);for(const[u,w]of[[0,0],[0,95],[0,-95],[-150,0],[150,0],[-150,95],[-150,-95],[0,190],[0,-190],[-300,0]]){const x=v.sx+c*u-s*w,y=v.sy+s*u+c*w;if(x>80&&y>80&&x<WW-80&&y<WH-80&&wvFree(v,x,y,v.sa))return[x,y]}return null}
 function wFuelTick(dt){for(const v of WV){if(!wFuelV(v)||v.st)continue;if(v.fu===undefined)v.fu=W_FMAX;
   if((v.drv>=0||v.gun>=0)&&v.fu>0){v.fu=Math.max(0,v.fu-dt*(W_FIDLE+(1-W_FIDLE)*Math.min(1,Math.abs(v.v||0)/WJP.sp)));if(v.fu<=0){v.dryT=T;v.rsp=T+W_DRYR;wEv('fo',v.x,v.y,v.i)}}
   if(v.fu<=0&&v.dryT===undefined){v.dryT=T;v.rsp=T+W_DRYR}
   if(v.fu<=0&&T-(v.dryT??-99)>=W_DRYX)for(const r of[v.drv,v.gun]){const e=r>=0?E[r]:null;if(e&&e.wv===v.i){wLeave(e);e.noVeh=T+2}}
   // 4x4 a sec : 45 s apres la panne il reapparait au garage, plein fait (s'il n'y a plus personne a bord)
-  if(v.fu<=0&&T>=v.rsp&&v.drv<0&&v.gun<0){if(wvFree(v,v.sx,v.sy,v.sa)){v.hp=WJP.hp;v.fu=W_FMAX;v.dryT=undefined;v.rsp=0;v.x=v.sx;v.y=v.sy;v.a=v.ta=v.sa;v.v=0;v.imm=0;v.wp=null;v.jm='';v.eg=null;wEv('jr',v.x,v.y,v.i)}else v.rsp=T+2}}}
+  if(v.fu<=0&&T>=v.rsp&&v.drv<0&&v.gun<0){const gp=wGarage(v);if(gp){v.hp=WJP.hp;v.fu=W_FMAX;v.dryT=undefined;v.rsp=0;v.x=gp[0];v.y=gp[1];v.a=v.ta=v.sa;v.v=0;v.imm=0;v.wp=null;v.jm='';v.eg=null;wEv('jr',v.x,v.y,v.i)}else v.rsp=T+2}}}
 // ----- etape 3 : lance-missiles et antenne satellite (une recharge commune a l'equipe)
 // cible de son camp (k : 'A' antenne, 'B' lance-missiles) toute proche
 function wTgNear(e,k){let b=null,bd=46;for(const q of WSt.tg){if(q.team!==e.team||q.dead||q.k!==k)continue;const d=Math.hypot(e.x-Math.max(q.x,Math.min(e.x,q.x+q.w)),e.y-Math.max(q.y,Math.min(e.y,q.y+q.h)));if(d<bd){bd=d;b=q}}return b}
@@ -7985,16 +7994,22 @@ function wBotSapper(e,go){if(!(e.c4>0)||e.wv>=0||e.wl>=0||!e.alive)return false;
 // pont piege (explosion imminente) : on quitte le tablier par le bout le plus proche
 function wBotFlee(e,go){const B=wDeco().bridges||[];for(const b of B){const S=WSt.br[b.i];if(!S||S.st||!(S.f>0))continue;if(e.x>b.x0-50&&e.x<b.x1+50&&e.y>b.y0-40&&e.y<b.y1+40){const side=e.x<(b.x0+b.x1)/2?-1:1,px=side<0?b.x0-140:b.x1+140;go('flee'+b.i+side,px,(b.y0+b.y1)/2,'go');e.bold=1;return true}}return false}
 // ----- conduite (conducteur) : on oriente le vehicule vers la direction du stick puis on avance ; demi-tour en marche arriere
+const WVR=P=>P.R_||(P.R_=Math.max(...P.c.map(Math.abs))+P.r);   // rayon englobant des cercles de collision
 function wvBlock(v,x,y,a){const P=WP(v),c=Math.cos(a),s=Math.sin(a);
  for(const u of P.c){const px=x+c*u,py=y+s*u;if(px<P.r||py<P.r||px>WW-P.r||py>WH-P.r)return's';if(hit(px,py,P.r))return's';
-  for(const o of WV){if(o===v||!wSolid(o))continue;const Q=WP(o),oc=Math.cos(o.a),os=Math.sin(o.a);for(const w of Q.c)if(Math.hypot(px-(o.x+oc*w),py-(o.y+os*w))<P.r+Q.r-4)return o}}
+  for(const o of WV){if(o===v||!wSolid(o))continue;const Q=WP(o),rr=WVR(P)+WVR(Q);if(Math.abs(o.x-x)>rr||Math.abs(o.y-y)>rr)continue;const oc=Math.cos(o.a),os=Math.sin(o.a);for(const w of Q.c)if(Math.hypot(px-(o.x+oc*w),py-(o.y+os*w))<P.r+Q.r-4)return o}}
  return null}
 // points du contour de la caisse (coins, bords tous les 24 px) : plus rien ne depasse au-dessus de l'eau ni dans un garde-corps
 const WPER={};function wPerim(v){const k=v.k;if(WPER[k])return WPER[k];const P=WP(v),hl=P.len/2+2,hw=P.wid/2+(k==='tank'?3:1),L=[];
  const nu=Math.ceil(2*hl/24),nw=Math.ceil(2*hw/24);for(let i=0;i<=nu;i++){const u=-hl+i*2*hl/nu;L.push([u,-hw],[u,hw])}for(let j=1;j<nw;j++){const w=-hw+j*2*hw/nw;L.push([-hl,w],[hl,w])}return WPER[k]=L}
 // (contre l'eau et les garde-corps des ponts : le reste du decor garde la collision par cercles, plus souple dans les passages etroits)
 function wHitU(x,y){const gx=Math.floor(x/OGS),gy=Math.floor(y/OGS);if(gx<0||gy<0||gx>=OGW||gy>=OGH)return true;for(const oi of OG[gy*OGW+gx]){const q=OB[oi];if(q.t==='u'&&x>=q.x&&x<=q.x+q.w&&y>=q.y&&y<=q.y+q.h)return true}return false}
-function wvPH(v,x,y,a){const c=Math.cos(a),s=Math.sin(a);let n=0;for(const[u,w]of wPerim(v)){const px=x+c*u-s*w,py=y+s*u+c*w;if(px<2||py<2||px>WW-2||py>WH-2||wHitU(px,py)||wBarPt(px,py,v.team))n++}return n}
+// test rapide : aucune case d'eau / garde-corps ni barriere sous la caisse -> rien a compter (evite ~25 tests de points par appel)
+let WOGU=null;function wNearU(v,x,y){const P=WP(v),R=Math.hypot(P.len/2+2,P.wid/2+3)+1;if(x-R<2||y-R<2||x+R>WW-2||y+R>WH-2)return true;
+ if(!WOGU||WOGU.og!==OG){const f=new Uint8Array(OGW*OGH);for(let c=0;c<f.length;c++)for(const oi of OG[c])if(OB[oi].t==='u'){f[c]=1;break}WOGU={og:OG,f}}
+ const i0=Math.floor((x-R)/OGS),i1=Math.floor((x+R)/OGS),j0=Math.floor((y-R)/OGS),j1=Math.floor((y+R)/OGS);for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)if(WOGU.f[j*OGW+i])return true;
+ if(WARM())for(const B of wBars()){const b=B.bb;if(x+R>=b[0]&&x-R<=b[2]&&y+R>=b[1]&&y-R<=b[3])return true}return false}
+function wvPH(v,x,y,a){if(!wNearU(v,x,y))return 0;const c=Math.cos(a),s=Math.sin(a);let n=0;for(const[u,w]of wPerim(v)){const px=x+c*u-s*w,py=y+s*u+c*w;if(px<2||py<2||px>WW-2||py>WH-2||wHitU(px,py)||wBarPt(px,py,v.team))n++}return n}
 // libre : pas de cercle bloque, et le contour ne s'enfonce pas davantage dans un obstacle qu'a la position actuelle (on peut toujours se degager)
 function wvFree(v,x,y,a){if(wvBlock(v,x,y,a))return false;const n=wvPH(v,x,y,a);return!n||(v.x!==undefined&&n<=wvPH(v,v.x,v.y,v.a))}
 // le tank pousse un 4x4 qui lui barre la route (s'il y a la place derriere)
@@ -8018,7 +8033,7 @@ function wCrush(v){if(Math.abs(v.v)<15)return;const P=WP(v),c=Math.cos(v.a),s=Ma
 // bot a pied : un vehicule lui fonce dessus -> pas de cote (reaction un peu retardee, rate parfois), sinon il court devant
 function wDodge(e){if(e.p||e.wv>=0||!e.alive||st.s!=='live')return null;let best=null,bt=1e9;
  for(const v of WV){if(v.st||v.x===undefined||!wSolid(v))continue;const sp=Math.abs(v.v||0),en=v.team!==e.team;if(sp<10&&!(en&&v.drv>=0&&v.k==='tank'))continue;
-  const P=WP(v),dx=e.x-v.x,dy=e.y-v.y;let fw=(v.v||0)<-2?-1:1;
+  const P=WP(v),dx=e.x-v.x,dy=e.y-v.y,far_=P.len/2+P.wid/2+50+Math.max(sp,40)*2;if(Math.abs(dx)>far_||Math.abs(dy)>far_)continue;let fw=(v.v||0)<-2?-1:1;
   // char presque arrete avec un pilote : il peut repartir en avant comme en arriere
   if(en&&sp<20&&v.k==='tank'&&(dx*Math.cos(v.a)+dy*Math.sin(v.a))<0)fw=-1;
   const c=Math.cos(v.a)*fw,s=Math.sin(v.a)*fw,u=dx*c+dy*s,w=-dx*s+dy*c,hw=P.wid/2+(en?28:16);
@@ -8036,7 +8051,8 @@ function wDodge(e){if(e.p||e.wv>=0||!e.alive||st.s!=='live')return null;let best
   let ax,ay;if(far){ax=best.c*Math.cos(f)-best.s*sd*Math.sin(f);ay=best.s*Math.cos(f)+best.c*sd*Math.sin(f)}else{ax=-best.s*sd+best.c*f;ay=best.c*sd+best.s*f}
   const L=Math.hypot(ax,ay);ax/=L;ay/=L;if(free(e.x+ax*28,e.y+ay*28)&&free(e.x+ax*56,e.y+ay*56))return[ax,ay]}
  return[best.c,best.s]}
-function wSeatMove(e,mx,my,dt){const v=WV[e.wv];if(!v||e.ws!==0)return;if(!e.p){const d=wBotDrive(e,v,dt);mx=d[0];my=d[1]}wDrive(v,mx,my,dt)}
+function wSeatMove(e,mx,my,dt){const v=WV[e.wv];if(!v||e.ws!==0)return;if(!e.p){v.bdA=(v.bdA||0)+dt;if(!v.bdC||v.bdE!==e.id||st.s!=='live'||(Math.round(T*60)+v.i)%3===0||v.bdA>.1){v.bdC=wBotDrive(e,v,v.bdA);v.bdA=0;v.bdE=e.id}mx=v.bdC[0];my=v.bdC[1]}else v.bdC=null;wDrive(v,mx,my,dt)}
+// pilote bot : nouvelle decision un pas sur trois (20 fois par seconde, vehicules decales) -> le serveur calcule 3 fois moins
 // ----- tir : canon du tank (obus) ou mitrailleuse du 4x4 (balles) ; la tourelle tourne vers la visee
 function wFire(e,fire,dt){const v=WV[e.wv];if(!v||e.ws!==1||v.st||wDry(v))return;const P=WP(v);   // a sec : tourelle sans courant
  if(!e.p){const a=wBotAim(e,v);fire=0;if(a){e.ang=a.ang;fire=a.fire}else e.ang=wBotIdle(v)}
@@ -8096,10 +8112,10 @@ function wC4Tick(dt){const D=wDeco();
   for(const e of E){if(!e.alive||e.team===c.t||(e.wv>=0&&e.ws===0))continue;const d=Math.hypot(e.x-c.ex,e.y-c.ey);if(d<90&&los({x:c.ex,y:c.ey},e))hurt(e,Math.round(90*(1-d/90*.5)),c.id,1,c.ex,c.ey)}wEv('c4b',c.x,c.y,1)}
  WSt.c4=WSt.c4.filter(c=>(c.v===undefined&&c.q===undefined)||c.f>-50)}
 // ----- boucle de la manche (hote)
-function warUpdate(dt){if(st.s!=='live')return;st.clock-=dt;
+function warUpdate(dt){wNavWarm();if(st.s!=='live')return;st.clock-=dt;
  for(const e of E){if(!e.alive&&e.wv>=0)wLeave(e,1);if(e.wl>=0&&!wLOk(e))e.wl=-1}
  for(const v of WV){if(v.cd>0)v.cd=Math.max(0,v.cd-dt);if(v.k==='tank'&&v.x!==undefined){const L=v.trl||(v.trl=[]),q=L[L.length-1];if(!q||Math.hypot(v.x-q[0],v.y-q[1])>25){L.push([v.x,v.y]);if(L.length>60)L.shift()}}
-  if(v.k==='jeep'&&v.st&&T>=v.rsp){if(wvFree(v,v.sx,v.sy,v.sa)){v.st=0;v.hp=WJP.hp;v.fu=W_FMAX;v.dryT=undefined;v.x=v.sx;v.y=v.sy;v.a=v.ta=v.sa;v.v=0;v.imm=0;v.wp=null;v.jm='';wEv('jr',v.x,v.y,v.i)}else v.rsp=T+2}
+  if(v.k==='jeep'&&v.st&&T>=v.rsp){const gp=wGarage(v);if(gp){v.st=0;v.wgo=0;v.hp=WJP.hp;v.fu=W_FMAX;v.dryT=undefined;v.x=gp[0];v.y=gp[1];v.a=v.ta=v.sa;v.v=0;v.imm=0;v.wp=null;v.jm='';wEv('jr',v.x,v.y,v.i)}else{v.rsp=T+2;v.wgo=1}}
   if(v.st)continue;for(const r of[v.drv,v.gun]){const p=r>=0?E[r]:null;if(r>=0&&(!p||!p.alive||p.wv!==v.i)){if(v.drv===r)v.drv=-1;if(v.gun===r)v.gun=-1}}
   if(v.drv<0&&Math.abs(v.v)>0){v.v*=Math.pow(.02,dt);if(Math.abs(v.v)<2)v.v=0;else{const nx=v.x+Math.cos(v.a)*v.v*dt,ny=v.y+Math.sin(v.a)*v.v*dt;if(wvFree(v,nx,ny,v.a)){v.x=nx;v.y=ny}else v.v=0}}
   wSeatSync(v)}
@@ -8142,26 +8158,31 @@ function wPApply(e,q){if(q.wv===undefined)return;e.wv=q.wv;e.ws=q.ws;e.c4=q.c4;e
 // grille de conduite des vehicules (cases de 40) : distance au but, calculee a la demande
 const WNC=40;
 // cases libres pour un vehicule (degagement autour des obstacles), calculees une fois par manche
-function wNavFree(k){let fr=WNAV['F'+k];if(fr)return fr;const GWn=Math.ceil(WW/WNC),GHn=Math.ceil(WH/WNC),tk=k[0]==='t',tm=+k[k.length-1]||0,cl=tk?WTK.r+24:WJP.r+22;fr=new Uint8Array(GWn*GHn);
- for(let j=0;j<GHn;j++)for(let i=0;i<GWn;i++){const x=i*WNC+WNC/2,y=j*WNC+WNC/2;fr[j*GWn+i]=(x>cl&&y>cl&&x<WW-cl&&y<WH-cl&&!hit(x,y,cl)&&!wBarCirc(x,y,cl-8,tm))?1:0}return WNAV['F'+k]=fr}
+function wNavFree(k){let fr=WNAV.get('F'+k);if(fr)return fr;const GWn=Math.ceil(WW/WNC),GHn=Math.ceil(WH/WNC),tk=k[0]==='t',tm=+k[k.length-1]||0,cl=tk?WTK.r+24:WJP.r+22;fr=new Uint8Array(GWn*GHn);
+ for(let j=0;j<GHn;j++)for(let i=0;i<GWn;i++){const x=i*WNC+WNC/2,y=j*WNC+WNC/2;fr[j*GWn+i]=(x>cl&&y>cl&&x<WW-cl&&y<WH-cl&&!hit(x,y,cl)&&!wBarCirc(x,y,cl-8,tm))?1:0}WNAV.set('F'+k,fr);return fr}
 // cout du terrain pour les vehicules : routes principales (et grands ponts) 1, bord de route 1,7, hors route 3 (tank 2,4) -> les bots roulent sur les routes
-function wRoadW(k){let w=WNAV['W'+k];if(w)return w;const GWn=Math.ceil(WW/WNC),GHn=Math.ceil(WH/WNC),D=wDeco(),S=[];w=new Float32Array(GWn*GHn);
- for(const r of D.roads||[])if(r.k==='main')for(let i=1;i<r.p.length;i++)S.push([r.p[i-1],r.p[i]]);const off=k[0]==='t'?2.4:3;
- for(let j=0;j<GHn;j++)for(let i=0;i<GWn;i++){const x=i*WNC+WNC/2,y=j*WNC+WNC/2;let dm=1e9;for(const[a,b]of S){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy,t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/L));dm=Math.min(dm,Math.hypot(x-a[0]-dx*t,y-a[1]-dy*t))}
-  for(const b of D.bridges||[])if(b.k==='road'&&x>b.x0-30&&x<b.x1+30&&y>b.y0&&y<b.y1)dm=0;w[j*GWn+i]=dm<52?1:(dm<95?1.7:off)}return WNAV['W'+k]=w}
-// distance ponderee au but (Dijkstra, tas binaire) : -1 = injoignable
-function wNavField(k,gx,gy,av,rad){rad=rad||6;const GWn=Math.ceil(WW/WNC),GHn=Math.ceil(WH/WNC),key=k+':'+gx+','+gy+':'+rad+(av?':'+Math.round(av.x/80)+','+Math.round(av.y/80):'');if(WNAV[key])return WNAV[key];
+let WNRD=null;   // distance de chaque case a la route principale la plus proche (par carte, gardee d'une manche a l'autre)
+function wRoadDist(){const D=wDeco(),sig=WW+'x'+WH+':'+((D.roads||[]).length)+':'+((D.bridges||[]).length);if(WNRD&&WNRD.sig===sig)return WNRD.dm;const GWn=Math.ceil(WW/WNC),GHn=Math.ceil(WH/WNC),S=[],dm=new Float32Array(GWn*GHn);
+ for(const r of D.roads||[])if(r.k==='main')for(let i=1;i<r.p.length;i++)S.push([r.p[i-1],r.p[i]]);
+ for(let j=0;j<GHn;j++)for(let i=0;i<GWn;i++){const x=i*WNC+WNC/2,y=j*WNC+WNC/2;let m=1e9;for(const[a,b]of S){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy,t=Math.max(0,Math.min(1,((x-a[0])*dx+(y-a[1])*dy)/L)),ex=x-a[0]-dx*t,ey=y-a[1]-dy*t,q=ex*ex+ey*ey;if(q<m)m=q}m=Math.sqrt(m);
+  for(const b of D.bridges||[])if(b.k==='road'&&x>b.x0-30&&x<b.x1+30&&y>b.y0&&y<b.y1)m=0;dm[j*GWn+i]=m}WNRD={sig,dm};return dm}
+function wRoadW(k){let w=WNAV.get('W'+k);if(w)return w;const dm=wRoadDist(),off=k[0]==='t'?2.4:3;w=new Float32Array(dm.length);for(let c=0;c<dm.length;c++)w[c]=dm[c]<52?1:(dm[c]<95?1.7:off);WNAV.set('W'+k,w);return w}
+// prechauffage : une grille par pas pendant le decompte (et apres une remise a zero, quand un pont saute) -> plus de gros a-coup au depart
+function wNavWarm(){if(!wHost())return;wRoadDist();for(const k of['tank0','tank1','jeep0','jeep1']){if(!WNAV.has('W'+k)){wRoadW(k);return}if(!WNAV.has('F'+k)){wNavFree(k);return}}}
+// distance ponderee au but (Dijkstra, tas binaire) : -1 = injoignable ; tampons du tas partages entre les calculs
+let WNB=null,WNRI=0;const WNRG=new Array(40).fill(''),WNO=[1,0,1,-1,0,1,0,1,1,0,-1,1,1,1,1.4142,1,-1,1.4142,-1,1,1.4142,-1,-1,1.4142];
+function wNavField(k,gx,gy,av,rad){rad=rad||6;const GWn=Math.ceil(WW/WNC),GHn=Math.ceil(WH/WNC),key=k+':'+gx+','+gy+':'+rad+(av?':'+Math.round(av.x/80)+','+Math.round(av.y/80):'');{const c_=WNAV.get(key);if(c_)return c_}
  let fr=wNavFree(k);const w=wRoadW(k);
  if(av){fr=fr.slice();const r=4;for(let j=Math.floor(av.y/WNC)-r;j<=Math.floor(av.y/WNC)+r;j++)for(let i=Math.floor(av.x/WNC)-r;i<=Math.floor(av.x/WNC)+r;i++){if(i<0||j<0||i>=GWn||j>=GHn)continue;if((i-gx)**2+(j-gy)**2<25)continue;if(Math.hypot(i*WNC+20-av.x,j*WNC+20-av.y)<150)fr[j*GWn+i]=0}}
- const N=GWn*GHn,d=new Float32Array(N).fill(-1),H=new Int32Array(N*8),HV=new Float32Array(N*8);let hn=0;
+ const N=GWn*GHn;if(!WNB||WNB.N!==N)WNB={N,H:new Int32Array(N*8),HV:new Float32Array(N*8),done:new Uint8Array(N)};const H=WNB.H,HV=WNB.HV,d=new Float32Array(N).fill(-1);let hn=0;
  const push=(c,v)=>{let i=hn++;while(i>0){const p=(i-1)>>1;if(HV[p]<=v)break;H[i]=H[p];HV[i]=HV[p];i=p}H[i]=c;HV[i]=v};
  const pop=()=>{const c=H[0],last=H[--hn],lv=HV[hn];let i=0;for(;;){let l=2*i+1;if(l>=hn)break;if(l+1<hn&&HV[l+1]<HV[l])l++;if(HV[l]>=lv)break;H[i]=H[l];HV[i]=HV[l];i=l}H[i]=last;HV[i]=lv;return c};
  let n0=0;for(let j=Math.max(0,gy-rad);j<=Math.min(GHn-1,gy+rad);j++)for(let i=Math.max(0,gx-rad);i<=Math.min(GWn-1,gx+rad);i++){const c=j*GWn+i;if(fr[c]&&(i-gx)**2+(j-gy)**2<=rad*rad){d[c]=0;push(c,0);n0++}}if(!n0)return null;
- const done=new Uint8Array(N);
- while(hn>0&&hn<N*8-8){const c=pop();if(done[c])continue;done[c]=1;const cx=c%GWn,cy=(c/GWn)|0,dc=d[c];
-  for(const[ox,oy]of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){const nx=cx+ox,ny=cy+oy;if(nx<0||ny<0||nx>=GWn||ny>=GHn)continue;const n=ny*GWn+nx;if(done[n]||!fr[n])continue;if(ox&&oy&&(!fr[cy*GWn+nx]||!fr[ny*GWn+cx]))continue;
-   const nd=dc+(ox&&oy?1.4142:1)*(w[c]+w[n])/2;if(d[n]<0||nd<d[n]){d[n]=nd;push(n,nd)}}}
- const keys=Object.keys(WNAV).filter(q=>q[0]!=='F'&&q[0]!=='W');if(keys.length>40)delete WNAV[keys[0]];return WNAV[key]={d,GWn,GHn,fr,w}}
+ const done=WNB.done;done.fill(0);
+ while(hn>0&&hn<N*8-8){const c=pop();if(done[c])continue;done[c]=1;const cx=c%GWn,cy=(c-cx)/GWn,dc=d[c],wc=w[c];
+  for(let o=0;o<24;o+=3){const ox=WNO[o],oy=WNO[o+1],nx=cx+ox,ny=cy+oy;if(nx<0||ny<0||nx>=GWn||ny>=GHn)continue;const n=ny*GWn+nx;if(done[n]||!fr[n])continue;if(ox&&oy&&(!fr[cy*GWn+nx]||!fr[ny*GWn+cx]))continue;
+   const nd=dc+WNO[o+2]*(wc+w[n])*.5;if(d[n]<0||nd<d[n]){d[n]=nd;push(n,nd)}}}
+ const R_={d,GWn,GHn,fr,w};WNAV.delete(WNRG[WNRI]);WNRG[WNRI]=key;WNRI=(WNRI+1)%40;WNAV.set(key,R_);return R_}
 // segment praticable en ligne droite (toutes les cases traversees sont libres)
 function wLineFree(F,x0,y0,x1,y1){const{fr,GWn,GHn}=F,L=Math.hypot(x1-x0,y1-y0),n=Math.ceil(L/14);for(let k=1;k<=n;k++){const t=k/n;if(t*L<30)continue;const i=Math.floor((x0+(x1-x0)*t)/WNC),j=Math.floor((y0+(y1-y0)*t)/WNC);if(i<0||j<0||i>=GWn||j>=GHn||!fr[j*GWn+i])return false}return true}
 // cout du trajet en ligne droite (terrain pondere)
@@ -8183,7 +8204,8 @@ function wFirePos(v,q){const fr=wNavFree(v.k+v.team),GWn=Math.ceil(WW/WNC),cx=q.
  return Object.assign(best||{},{q,t:T+25})}
 // conducteur bot : tank -> axe (pont) puis position de tir face a la cible ennemie la plus proche, arret des que la vue est degagee ;
 // 4x4 -> escorte du tank (roule de concert avec lui, contourne le tank)
-function wBotDrive(e,v,dt){if(st.s!=='live')return[0,0];v.zr=0;let gx,gy,rad=4,av=v.av&&T<v.av.t?v.av:null,kmax=1,PL=null;
+function wBotDrive(e,v,dt){return wBotPost(e,v,wBotDrive0(e,v,dt),dt)}
+function wBotDrive0(e,v,dt){if(st.s!=='live')return[0,0];v.zr=0;if(v.av&&v.av.o>=0&&T<v.av.t+.5){const o=WV[v.av.o];if(o&&wSolid(o)&&Math.abs(o.v||0)<12&&Math.hypot(o.x-v.av.x,o.y-v.av.y)<80)v.av.t=Math.max(v.av.t,T+2)}let gx,gy,rad=4,av=v.av&&T<v.av.t?v.av:null,kmax=1,PL=null;
  if(v.bx===undefined){v.bx=v.x;v.by=v.y;v.bk=0}
  const Z=r=>{v.zr=r||'z';v.bk=0;v.bx=v.x;v.by=v.y;return[0,0]};   // arret voulu : ce n'est pas un blocage
  if(wDry(v))return Z('dry');
@@ -8193,7 +8215,7 @@ function wBotDrive(e,v,dt){if(st.s!=='live')return[0,0];v.zr=0;let gx,gy,rad=4,a
   if(inR){v.stopT=(v.stopT||0)+dt;if(v.gun<0){v.drv=-1;v.gun=e.id;e.ws=1;v.stopT=0;return Z('tk-swap')}if(v.stopT<8||T-(v.lf??-99)<WTK.rl+3)return Z('tk-inR');if(!v.st8){v.st8=1;(v.fpBad=v.fpBad||[]).push([v.x,v.y,T+40]);v.fp=null}}else{v.stopT=0;v.st8=0}   // a portee : on s'arrete pour tirer (on repart si plus rien n'est tire depuis un rechargement + 3 s)
   // cible gardee tant qu'elle est valable (plus d'aller-retour entre deux cibles en chemin)
   let bq=v.goal&&en.includes(v.goal)&&!(v.bad&&v.bad.includes(v.goal)&&T<v.badT)?v.goal:null,bd=1e9;if(!bq)for(const q of en){if(v.bad&&v.bad.includes(q)&&T<v.badT)continue;const d=Math.hypot(q.x+q.w/2-v.x,q.y+q.h/2-v.y)+(q===v.goal?-300:0);if(d<bd){bd=d;bq=q}}if(!bq){v.bad=null;bq=en[0]}v.goal=bq;gx=bq.x+bq.w/2;gy=bq.y+bq.h/2;rad=12;
-  if(v.lane===undefined){const o=WV.find(o=>o.k==='tank'&&o!==v),RB=(wDeco().bridges||[]).filter(b=>b.k==='road'&&!WSt.br[b.i].st&&!(WSt.br[b.i].f>0)),R2=RB.filter(b=>!o||o.lane!==b.i),L_=R2.length?R2:RB;v.lane=L_.length?L_[Math.random()*L_.length|0].i:-1}
+  if(v.lane===undefined){const o=WV.find(o=>o.k==='tank'&&o!==v),RB=(wDeco().bridges||[]).filter(b=>b.k==='road'&&!WSt.br[b.i].st&&!(WSt.br[b.i].f>0)),R2=RB.filter(b=>(!o||o.lane!==b.i)&&!(v.lnB&&T<v.lnB.t&&v.lnB.i===b.i)),L_=R2.length?R2:RB;v.lane=L_.length?L_[Math.random()*L_.length|0].i:-1}
   {const b=(wDeco().bridges||[])[v.lane];if(b&&WSt.br[v.lane].f>0&&!(Math.abs(v.x-b.x)<(b.x1-b.x0)/2+60&&Math.abs(v.y-b.y)<160))v.lane=undefined;else if(b&&!WSt.br[v.lane].st){const ex=spawnGroup(v.team)===0?b.x1+170:b.x0-170;if(Math.hypot(v.x-ex,v.y-b.y)>200&&((ex>b.x)?v.x<ex:v.x>ex)){gx=ex;gy=b.y;rad=4}else v.lane=-2}else if(v.lane>=0)v.lane=-2}
   if(!(v.lane>=0)){if(!v.fp||v.fp.q!==bq||T>v.fp.t)v.fp=wFirePos(v,bq);if(v.fp.x!==undefined){gx=v.fp.x;gy=v.fp.y;rad=2}}}
  else{PL=wJeepPlan(e,v,dt);if(!PL)return Z('j-none');if(PL.cmd){v.bk=0;v.bx=v.x;v.by=v.y;v.nd=0;return PL.cmd}if(PL.stop)return Z(PL.stop);
@@ -8201,11 +8223,11 @@ function wBotDrive(e,v,dt){if(st.s!=='live')return[0,0];v.zr=0;let gx,gy,rad=4,a
   if(T<(v.circT||0))return Z('anti-rond');
   gx=PL.x;gy=PL.y;rad=PL.r||3;if(PL.av&&!av)av=PL.av;if(PL.k)kmax=PL.k;
   // but qui bouge un peu (place d'escorte, soldat a recuperer) : on garde l'ancien tant qu'il reste a moins de 110 px (moins de recalculs, plus de zigzag)
-  if(v.eg&&T-v.eg.t<3&&Math.hypot(v.eg.x-gx,v.eg.y-gy)<110&&Math.hypot(gx-v.x,gy-v.y)>200){gx=v.eg.x;gy=v.eg.y}else v.eg={x:gx,y:gy,t:T}}
- if(!av&&v.k==='jeep'){let o_=null,od=420;const ga=Math.atan2(gy-v.y,gx-v.x);for(const o of WV){if(o===v||!wSolid(o)||o.x===undefined)continue;const d=Math.hypot(o.x-v.x,o.y-v.y),oa=Math.atan2(o.y-v.y,o.x-v.x);if(d<od&&Math.hypot(o.x-gx,o.y-gy)>200&&Math.abs(Math.atan2(Math.sin(oa-ga),Math.cos(oa-ga)))<1.1){od=d;o_=o}}if(o_)av={x:o_.x,y:o_.y}}   // les 4x4 contournent le vehicule le plus proche
- let F=wNavField(v.k+v.team,Math.floor(gx/WNC),Math.floor(gy/WNC),av,rad);if(v.k==='tank'&&F){v.nF=F;v.nFT=T}if(!F&&av)F=wNavField(v.k+v.team,Math.floor(gx/WNC),Math.floor(gy/WNC),null,rad);if(!F){if(v.k==='jeep')wJeepSkip(v);return Z('noF')}
+  if(v.eg&&((T-v.eg.t<3&&Math.hypot(v.eg.x-gx,v.eg.y-gy)<110&&Math.hypot(gx-v.x,gy-v.y)>200)||(v.jm==='esc'&&T-v.eg.t<1.5&&Math.hypot(v.eg.x-v.x,v.eg.y-v.y)>60))){gx=v.eg.x;gy=v.eg.y}else v.eg={x:gx,y:gy,t:T}}
+ if(!av&&v.k==='jeep'){let o_=null,od=320;const ga=Math.atan2(gy-v.y,gx-v.x);for(const o of WV){if(o===v||!wSolid(o)||o.x===undefined||Math.abs(o.v||0)>12)continue;const d=Math.hypot(o.x-v.x,o.y-v.y),oa=Math.atan2(o.y-v.y,o.x-v.x);if(d<od&&Math.hypot(o.x-gx,o.y-gy)>200&&Math.abs(Math.atan2(Math.sin(oa-ga),Math.cos(oa-ga)))<.7){od=d;o_=o}}if(o_){v.av={x:o_.x,y:o_.y,t:T+5,o:o_.i};av=v.av}}   // les 4x4 contournent le vehicule le plus proche
+ let F=wNavField(v.k+v.team,Math.floor(gx/WNC),Math.floor(gy/WNC),av,rad);if(F&&av){const F0=wNavField(v.k+v.team,Math.floor(gx/WNC),Math.floor(gy/WNC),null,rad),c_=Math.floor(v.y/WNC)*F.GWn+Math.floor(v.x/WNC),da=F.d[c_],d0=F0?F0.d[c_]:-1,ao=av.o>=0?WV[av.o]:null,rt=ao&&(ao.team!==v.team||!(ao.drv>=0||ao.gun>=0))?2.5:1.3;if(d0>=0&&(da<0||da>d0*rt+12))F=F0}if(v.k==='tank'&&F){v.nF=F;v.nFT=T}if(!F&&av)F=wNavField(v.k+v.team,Math.floor(gx/WNC),Math.floor(gy/WNC),null,rad);if(!F){if(v.k==='jeep')wJeepSkip(v);return Z('noF')}
  // coince : marche arriere en braquant ; bloque par un autre vehicule (tanks face a face sur un pont) -> on passe ailleurs
- v.bk=(v.bk||0)+dt;if(v.bk>1.4){v.bk=0;const d=Math.hypot(v.x-v.bx,v.y-v.by);v.bx=v.x;v.by=v.y;if(d<12&&!(v.imm>T)){const c=Math.cos(v.a),s_=Math.sin(v.a),bw=wvFree(v,v.x-c*24,v.y-s_*24,v.a),fw=wvFree(v,v.x+c*24,v.y+s_*24,v.a),rl=wvFree(v,v.x,v.y,v.a+.25),rr=wvFree(v,v.x,v.y,v.a-.25);v.escM=bw?-1:(fw?1:(rl?2:(rr?3:-1)));v.brev=T+1.3;v.nst=(v.nst||0)+1;const o=WV.find(o=>o!==v&&wSolid(o)&&Math.hypot(o.x-v.x,o.y-v.y)<280);if(o&&v.nst>=2){v.av={x:o.x,y:o.y,t:T+14};v.nst=0}if(v.fp&&v.nst>=3){v.fpBad.push([v.fp.x,v.fp.y,T+40]);v.fp=null;v.nst=0}}else if(d>40)v.nst=0}
+ v.bk=(v.bk||0)+dt;if(v.bk>1.4){v.bk=0;const d=Math.hypot(v.x-v.bx,v.y-v.by);v.bx=v.x;v.by=v.y;if(d<12&&!(v.imm>T)){const c=Math.cos(v.a),s_=Math.sin(v.a),bw=wvFree(v,v.x-c*24,v.y-s_*24,v.a)&&!wAhead(v,-c,-s_,110),fw=wvFree(v,v.x+c*24,v.y+s_*24,v.a)&&!wAhead(v,c,s_,50),rl=wvFree(v,v.x,v.y,v.a+.25),rr=wvFree(v,v.x,v.y,v.a-.25);v.escM=bw?-1:(fw?1:(rl?2:(rr?3:-1)));v.brev=T+1;v.nst=(v.nst||0)+1;const o=WV.find(o=>o!==v&&wSolid(o)&&Math.hypot(o.x-v.x,o.y-v.y)<280);if(o&&v.nst>=2){v.av={x:o.x,y:o.y,t:T+14};v.nst=0}if(v.fp&&v.nst>=3){v.fpBad.push([v.fp.x,v.fp.y,T+40]);v.fp=null;v.nst=0}}else if(d>40)v.nst=0}
  if(T<(v.brev||0)){const m=v.escM??-1,a=m===1?v.a:(m===2?v.a+1.3:(m===3?v.a-1.3:v.a+Math.PI+(v.i%2?.7:-.7)));return[Math.cos(a),Math.sin(a)]}
  let dir=wNavDir(F,v.x,v.y);
  // pas de chemin en contournant le vehicule le plus proche (route barree par le tank...) : on tente sans, au ralenti ; toujours rien -> autre but
@@ -8219,7 +8241,7 @@ function wBotDrive(e,v,dt){if(st.s!=='live')return[0,0];v.zr=0;let gx,gy,rad=4,a
  const L=Math.hypot(dir[0],dir[1])||1;let k=1;
  // on ralentit a l'approche du but (pas de freinage brutal) et pour laisser passer un vehicule qui croise devant
  if(dir[2]<4)k=.55+dir[2]*.12;k=Math.min(k,kmax);
- const ah=WV.find(o=>o!==v&&wSolid(o)&&o.x!==undefined&&Math.hypot(o.x-v.x,o.y-v.y)<WP(v).len/2+WP(o).len/2+70&&((o.x-v.x)*Math.cos(v.a)+(o.y-v.y)*Math.sin(v.a))>0&&Math.abs(o.v||0)>10);if(ah)k=Math.min(k,.45);
+ 
  // le chemin repart derriere nous et le but est loin : demi-tour en marche avant (plus de longues marches arriere)
  // (seulement s'il y a la place de tourner ; sinon, ou si le demi-tour n'avance pas, marche arriere comme avant)
  {const df=Math.atan2(Math.sin(Math.atan2(dir[1],dir[0])-v.a),Math.cos(Math.atan2(dir[1],dir[0])-v.a));if(Math.abs(df)>2&&dir[2]>3&&(v.v||0)<=20&&!(v.noUT>T)){const sg=df>0?1:-1;let room=true;
@@ -8230,6 +8252,61 @@ function wBotDrive(e,v,dt){if(st.s!=='live')return[0,0];v.zr=0;let gx,gy,rad=4,a
  // cap lisse (plus de coups de volant d'une case a l'autre) ; grand changement de direction : immediat
  const wa=Math.atan2(dir[1],dir[0]);if(v.sA===undefined||T-(v.sAT||0)>.3)v.sA=wa;v.sAT=T;const dA=Math.atan2(Math.sin(wa-v.sA),Math.cos(wa-v.sA));v.sA=Math.abs(dA)>1.1?wa:v.sA+dA*Math.min(1,dt*(v.k==='tank'?3:4.5));
  return[Math.cos(v.sA)*k,Math.sin(v.sA)*k]}
+// ----- pilote bot : filtre final de la commande -----
+// vehicule solide devant nous, dans le couloir de la caisse (sens de marche ax,ay, portee L) : {o, gap = espace libre entre les caisses}
+function wAhead(v,ax,ay,L){const P=WP(v);let best=null,bg=1e9;
+ for(const o of WV){if(o===v||o.x===undefined||!wSolid(o))continue;const Q=WP(o),dx=o.x-v.x,dy=o.y-v.y,u=dx*ax+dy*ay;if(u<=0||u>L+P.len/2+Q.len/2)continue;
+  const oc=Math.cos(o.a),os=Math.sin(o.a),ca=Math.abs(oc*ax+os*ay),sa=Math.abs(os*ax-oc*ay),eu=Q.len/2*ca+Q.wid/2*sa,ew=Q.len/2*sa+Q.wid/2*ca;
+  if(Math.abs(dx*ay-dy*ax)>P.wid/2+ew+12)continue;const gap=u-P.len/2-eu;if(gap<bg){bg=gap;best=o}}
+ return best?{o:best,gap:bg}:null}
+// 1) toupie (le vehicule tourne sur lui-meme sans avancer) -> but abandonne, courte pause, et un « blocage » de plus
+// 2) pas de marche arriere : un but derriere -> demi-tour en marche avant (le tank pivote sur place) ; seule la courte manoeuvre de degagement recule
+// 3) freinage : vehicule devant dans le couloir -> on ralentit, on s'arrete a 16 px ; s'il roule dans le meme sens on cale sa vitesse sur la sienne
+// 4) vehicule arrete devant nous : apres 2,5 s on le contourne ; face a face, le moins prioritaire (4x4 avant tank, puis numero) recule un peu ;
+//    toujours bloque au bout de 12 s -> un « blocage » de plus (3 blocages -> l'equipage descend et va aider a pied)
+function wBotPost(e,v,c,dt){if(st.s!=='live')return c;
+ const H=v.bp||(v.bp={rot:0,ra:v.a,rx:v.x,ry:v.y,rT:T,wt:0,wo:-1,bo:-99});
+ H.rot+=Math.atan2(Math.sin(v.a-H.ra),Math.cos(v.a-H.ra));H.ra=v.a;
+ if(T-H.rT>5){if(Math.abs(H.rot)>4.5&&Math.hypot(v.x-H.rx,v.y-H.ry)<110){v.hld=T+1.2;v.brev=0;wBlocked(v,'toupie')}H.rot=0;H.rx=v.x;H.ry=v.y;H.rT=T}
+ if(T<(v.hld||0)){v.bk=0;v.bx=v.x;v.by=v.y;v.zr='pause';return[0,0]}
+ let mx=c[0],my=c[1];const L=Math.hypot(mx,my);if(L<.15){H.wt=Math.max(0,H.wt-dt);return c}
+ const esc=T<(v.brev||0);let df=Math.atan2(Math.sin(Math.atan2(my,mx)-v.a),Math.cos(Math.atan2(my,mx)-v.a));
+ if(Math.abs(df)>1.9&&!esc){const sg=df>0?1:-1,na=v.a+sg*1.9;mx=Math.cos(na)*L;my=Math.sin(na)*L;df=sg*1.9}
+ const rv=esc&&(v.v||0)<-2,sg_=rv?-1:1,ax=Math.cos(v.a)*sg_,ay=Math.sin(v.a)*sg_,sp=Math.abs(v.v||0),LK=45+sp*1.1;
+ const fac=(R,dx,dy)=>{if(!R)return 1;const o=R.o,ov=(o.v||0)*(Math.cos(o.a)*dx+Math.sin(o.a)*dy);let f=Math.max(0,Math.min(1,(R.gap-16)/LK));if(ov>8&&R.gap>24)f=Math.max(f,Math.min(1,ov/WP(v).sp));return R.gap<16?0:f};
+ const Aa=wAhead(v,ax,ay,LK),fA=fac(Aa,ax,ay);let A=Aa,f=fA;
+ if(!rv&&Math.abs(df)>.35){const bx=Math.cos(v.a+df),by=Math.sin(v.a+df),B=wAhead(v,bx,by,LK),fB=fac(B,bx,by);if(fB<f){f=fB;A=B}
+  if(fA<.25&&fB>=.5){f=Math.max(f,.22);A=null}}   // l'obstacle est devant le capot mais on tourne pour s'en ecarter : on braque au ralenti
+ if(A&&f<.35&&Math.abs(A.o.v||0)<14){const o=A.o;if(H.wo!==o.i){H.wo=o.i;H.wt=0}H.wt+=dt;v.bk=0;v.bx=v.x;v.by=v.y;v.zr='attente';
+  // face a face (il attend aussi apres nous) : le moins prioritaire recule un peu, puis contourne
+  const ob=o.bp,mut=ob&&ob.wo===v.i&&ob.wt>1.2,low=v.k==='jeep'&&o.k==='tank'||(v.k===o.k&&v.i>o.i);
+  if(mut&&low&&H.wt>1.2&&T-H.bo>6){if(v.k==='tank'&&v.lane>=0&&o.team!==v.team){v.lnB={i:v.lane,t:T+40};v.lane=undefined}H.bo=T;v.brev=T+1.1;v.escM=-1;v.av={x:o.x,y:o.y,t:T+8,o:o.i};return[-Math.cos(v.a),-Math.sin(v.a)]}
+  const al=o.team===v.team&&[o.drv,o.gun].some(id=>id>=0&&E[id]&&E[id].alive);   // allie avec equipage : il va bouger
+  if(H.wt>(al?6:2.5)&&!(v.av&&T<v.av.t&&v.av.o===o.i))v.av={x:o.x,y:o.y,t:T+8,o:o.i};
+  if(H.wt>12){H.wt=0;wBlocked(v,'attente')}}
+ else if(!A||f>.6)H.wt=Math.max(0,H.wt-dt*2);
+ return f<1||mx!==c[0]||my!==c[1]?[mx*f,my*f]:c}
+// blocage (toupie, longue attente, pas de progres) : on change de but ; au 3e blocage rapproche, l'equipage bot descend
+function wBlocked(v,why){v.blk=(v.blk||0)+1;v.blkT=T;v.sA=undefined;
+ if(v.k==='jeep'){wJeepSkip(v);v.eg=null;v.wp=null;v.cw=null}
+ else{if(v.fp&&v.fp.x!==undefined){(v.fpBad=v.fpBad||[]).push([v.fp.x,v.fp.y,T+40]);v.fp=null}else if(v.goal){(v.bad=v.bad||[]).push(v.goal);v.badT=T+20}if(v.lane>=0)v.lane=-2}
+ if(v.blk>=3)wCrewOut(v)}
+// equipage bot qui descend d'un vehicule bloque ou arrete pour rien : il aide a pied (cibles ennemies, defense) et ne remonte pas avant 30 s
+function wCrewOut(v){if([v.drv,v.gun].some(id=>id>=0&&E[id]&&E[id].p))return;v.blk=0;v.cmp=0;v.abT=T+30;
+ for(const id of[v.drv,v.gun])if(wBot(id)){const e=E[id];wLeave(e);e.noVeh=T+30;e.hlp=T+30;e.path=[];e.mode='go'}}
+// pieton bot : un vehicule barre le chemin juste devant -> il longe la caisse (comme un mur) du cote qui va vers son but, en s'ecartant un peu,
+// jusqu'a ce que la voie soit libre (le cote choisi est garde 2 s : pas d'hesitation d'un cote a l'autre)
+function wFootAvoid(e,mx,my){const L=Math.hypot(mx,my);if(L<.2||e.p||e.wv>=0)return null;const ux=mx/L,uy=my/L;
+ let v=null;for(const r of[16,30,46]){v=wvAt(e.x+ux*r,e.y+uy*r,12);if(v)break}
+ if(!v){if(e.vdt&&T-e.vdt.t>2)e.vdt=null;return null}
+ const tg=e.tag||'';if(e.mode==='c4'||tg.startsWith('veh'+v.i+'_')||tg.startsWith('c4'+v.i+'_')||tg.startsWith('pul'+v.i+'_'))return null;   // il vient a ce vehicule expres
+ const P=WP(v),c=Math.cos(v.a),s=Math.sin(v.a),dx=e.x-v.x,dy=e.y-v.y,lu=dx*c+dy*s,lw=-dx*s+dy*c,cu=Math.max(-P.len/2,Math.min(P.len/2,lu)),cw=Math.max(-P.wid/2,Math.min(P.wid/2,lw));
+ let nu=lu-cu,nw=lw-cw,nl=Math.hypot(nu,nw);if(nl<1){nu=lu;nw=lw;nl=Math.hypot(nu,nw)||1}nu/=nl;nw/=nl;
+ const nx=c*nu-s*nw,ny=s*nu+c*nw,dir=sd=>{const tx=-ny*sd,ty=nx*sd,ox=tx*.85+nx*.35,oy=ty*.85+ny*.35,ol=Math.hypot(ox,oy);return[ox/ol,oy/ol]},
+  free=d=>!hit(e.x+d[0]*30,e.y+d[1]*30,12)&&!wvAt(e.x+d[0]*30,e.y+d[1]*30,8);
+ const K=e.vdt&&e.vdt.v===v.i&&T-e.vdt.t<2?e.vdt:null;let sd=K?K.sd:((-ny*ux+nx*uy)>=0?1:-1);
+ if(!free(dir(sd))){sd=-sd;if(!free(dir(sd)))return null}
+ if(!K||K.sd!==sd)e.vdt={v:v.i,sd,t:T};const d=dir(sd);return[d[0]*L,d[1]*L]}
 // ----- 4x4 bot : but selon la situation -----
 // 1) essence juste suffisante pour rentrer -> retour au parc, on repart le plein fait ; 2) pas de tireur et le sien arrive a pied -> on va le chercher ;
 // 3) 4x4 de defense : patrouille autour de nos cibles, tourne autour d'un ennemi qui approche ; 4) escorte du tank tant qu'il a un conducteur ;
@@ -8254,7 +8331,7 @@ function wTrailBack(tk,dm){const L=tk.trl||[];let px=tk.x,py=tk.y,acc=0;for(let 
  return[tk.x-Math.cos(tk.a)*dm,tk.y-Math.sin(tk.a)*dm]}
 // escorte selon le travail : devant (sur la route du tank), derriere (sur sa trace), flanc. Tank arrete (il tire) : devant/flanc -> sur le
 // flanc hors de la ligne du canon (on alterne avant / arriere toutes les 9 s) ; derriere -> reste derriere. On garde sa place tant qu'elle est libre.
-function wEscPlan(v,dt,tk,job){const tv=tk.v||0;v.tkS=Math.abs(tv)<8?(v.tkS||0)+dt:0;const scr=v.tkS>3&&!(wBot(tk.drv)&&!(tk.stopT>0)),sd=v.team?-1:1,ax=scr?(tk.ta??tk.a):tk.a,c=Math.cos(ax),s=Math.sin(ax);
+function wEscPlan(v,dt,tk,job){const tv=tk.v||0;v.tkS=Math.abs(tv)<8?(v.tkS||0)+dt:0;const sc0=v.tkS>3&&!(wBot(tk.drv)&&!(tk.stopT>0));if(v.scrS===undefined)v.scrS=sc0;if(sc0!==v.scrS){v.scrC=(v.scrC||0)+dt;if(v.scrC>2.5){v.scrS=sc0;v.scrC=0}}else v.scrC=0;const scr=v.scrS,sd=v.team?-1:1,ax=scr?(tk.ta??tk.a):tk.a,c=Math.cos(ax),s=Math.sin(ax);
  const fb=1,at=q=>[tk.x+c*q[0]-s*q[1],tk.y+s*q[0]+c*q[1]],ok=p=>p[0]>70&&p[1]>70&&p[0]<WW-70&&p[1]<WH-70&&!hit(p[0],p[1],50);let S;
  if(scr)S=job==='rear'?[[-260,0],[-260,140*sd],[-260,-140*sd],[-180,260*sd]].map(at):[[fb?150:-170,260*sd],[fb?-170:150,260*sd],[fb?150:-170,-260*sd],[fb?-170:150,-260*sd]].map(at);
  else if(job==='front'){S=[wTankAhead(tk,340),wTankAhead(tk,260),at([40,230*sd]),at([40,-230*sd])];
@@ -8266,7 +8343,7 @@ function wEscPlan(v,dt,tk,job){const tv=tk.v||0;v.tkS=Math.abs(tv)<8?(v.tkS||0)+
  else if(job==='rear')S=[wTrailBack(tk,270),wTrailBack(tk,210),at([-280,0]),at([-280,130*sd])];
  else S=[[40,230*sd],[40,-230*sd],[-280,0],[-280,130*sd]].map(at);
  const key=(scr?'s'+fb:'m')+job;if(v.esK!==key){const keep=v.esK&&v.esK[0]===key[0]&&v.esI>=0?v.esI:-1;v.esK=key;v.esI=keep>=0&&ok(S[keep])?keep:0;if(!ok(S[v.esI]))for(let i=0;i<S.length;i++)if(ok(S[i])){v.esI=i;break}}
- let p=S[v.esI||0];if(!ok(p)){v.esB=(v.esB||0)+dt;if(v.esB>.8){v.esB=0;let f=-1;for(let i=1;i<=S.length;i++){const j=((v.esI||0)+i)%S.length;if(ok(S[j])){f=j;break}}if(f<0)return{stop:'esc-noP'};v.esI=f;p=S[f]}}else{v.esB=0;if(v.esI>0&&!scr&&ok(S[0])){v.esR=(v.esR||0)+dt;if(v.esR>2){v.esR=0;v.esI=0;p=S[0]}}else v.esR=0}
+ let p=S[v.esI||0];if(!ok(p)){v.esB=(v.esB||0)+dt;if(v.esB>.8){v.esB=0;let f=-1;for(let i=1;i<=S.length;i++){const j=((v.esI||0)+i)%S.length;if(ok(S[j])){f=j;break}}if(f<0)return{stop:'esc-noP'};v.esI=f;p=S[f]}}else{v.esB=0;if(v.esI>0&&!scr&&ok(S[0])){v.esR=(v.esR||0)+dt;if(v.esR>6){v.esR=0;v.esI=0;p=S[0]}}else v.esR=0}
  const dG=Math.hypot(p[0]-v.x,p[1]-v.y),dT=Math.hypot(tk.x-v.x,tk.y-v.y);
  if(dT<150&&dG>60){const dx=v.x-tk.x,dy=v.y-tk.y,L=Math.hypot(dx,dy)||1;v.fm=0;return{cmd:[dx/L*.55,dy/L*.55]}}   // colle au tank : on s'ecarte doucement
  // devant le tank, dans son passage (il nous pousserait ou resterait bloque) : on se range sur le cote
@@ -8276,7 +8353,7 @@ function wEscPlan(v,dt,tk,job){const tv=tk.v||0;v.tkS=Math.abs(tv)<8?(v.tkS||0)+
   const vx=Math.cos(tk.a)*tv,vy=Math.sin(tk.a)*tv,K=.85,dx=vx+(p[0]-v.x)*K,dy=vy+(p[1]-v.y)*K,sm=Math.min(1,dt*3);
   if(v.fvx===undefined){v.fvx=dx;v.fvy=dy}v.fvx+=(dx-v.fvx)*sm;v.fvy+=(dy-v.fvy)*sm;const sp=Math.hypot(v.fvx,v.fvy);
   if(sp<16)return{stop:scr?'esc-scr':'esc-in'};const m=Math.max(.16,Math.min(1,sp/WJP.sp));return{cmd:[v.fvx/sp*m,v.fvy/sp*m]}}
- v.fm=0;v.fvx=v.fvy=undefined;return{x:p[0],y:p[1],r:2,av:dT<700?{x:tk.x,y:tk.y}:null}}
+ v.fm=0;v.fvx=v.fvy=undefined;return{x:p[0],y:p[1],r:2,av:dT<700&&Math.abs(tv)<10?{x:tk.x,y:tk.y}:null}}
 // boucle de points de passage : on y va, on reste dw s (le tireur arrose), puis le suivant ; les points injoignables sont ecartes
 function wReachMap(v){const F=wNavField(v.k+v.team,Math.floor(v.x/WNC),Math.floor(v.y/WNC),null,3);return F}
 function wReachOK(F,x,y){if(!F)return true;const{d,GWn,GHn}=F,gx=Math.floor(x/WNC),gy=Math.floor(y/WNC);for(let j=gy-1;j<=gy+1;j++)for(let i=gx-1;i<=gx+1;i++){if(i<0||j<0||i>=GWn||j>=GHn)continue;if(d[j*GWn+i]>=0&&F.fr[j*GWn+i])return true}return false}
@@ -8318,18 +8395,20 @@ function wDefPlan(v){const t=v.team,own=WSt.tg.filter(q=>q.team===t&&!q.dead),g=
 // equipages bots : 4x4 a sec -> on descend ; bot seul au canon qui n'a rien tire depuis un moment -> il reprend le volant ;
 // vehicule qui ne bouge plus et ne tire plus -> autre position, et au bout de 3 fois les bots descendent (ils ne remontent pas tout de suite)
 function wBotCrew(dt){for(const v of WV){if(v.st||v.x===undefined)continue;
-  if(v.prx===undefined||Math.hypot(v.x-v.prx,v.y-v.pry)>140){v.prx=v.x;v.pry=v.y;v.prT=T}
-  const B=[v.drv,v.gun].filter(id=>wBot(id)),pl=[v.drv,v.gun].some(id=>id>=0&&E[id]&&E[id].p);if(!B.length){v.prT=T;v.cmp=0;continue}
+  if(v.prx===undefined||Math.hypot(v.x-v.prx,v.y-v.pry)>100){v.prx=v.x;v.pry=v.y;v.prT=T;v.cmp=0}
+  const B=[v.drv,v.gun].filter(id=>wBot(id)),pl=[v.drv,v.gun].some(id=>id>=0&&E[id]&&E[id].p);if(!B.length){v.prT=T;v.cmp=0;v.blk=0;continue}
   if(wDry(v))continue;   // a sec : tout l'equipage descend (wFuelTick)
   if(v.drv<0&&wBot(v.gun)){const g=E[v.gun],RD=v.k==='tank'?'tdrv':(v.jr==='def'?'j2drv':'jdrv'),cm=E.some(m=>m.alive&&!m.p&&m.team===v.team&&m.wv<0&&m.wrole===RD&&Math.hypot(m.x-v.x,m.y-v.y)<350);
    if(!cm&&T-(v.lf??-99)>(v.k==='tank'?WTK.rl+3:3)&&T-(v.gsT??-99)>(v.k==='tank'?WTK.rl+3:3)){v.gun=-1;v.drv=g.id;g.ws=0;v.gsT=T;if(v.k==='tank'){v.swB=T+WTK.rl+2;(v.fpBad=v.fpBad||[]).push([v.x,v.y,T+30]);v.fp=null}}}
   else if(v.gun>=0)v.gsT=T;
-  if(pl){v.prT=T;continue}
-  if(T-v.prT>25&&T-(v.lf??-99)>WTK.rl+6){v.prT=T;v.cmp=(v.cmp||0)+1;
-   if(v.cmp>=3){v.cmp=0;for(const id of B){const e=E[id];wLeave(e);e.noVeh=T+20}}
+  if(pl){v.prT=T;v.blk=0;continue}
+  if(v.blk>0&&T-(v.blkT||0)>30){v.blk--;v.blkT=T}
+  // il tire encore, va chercher son tireur, ou escorte un tank qui avance : il a une raison d'etre arrete
+  {const fr=T-(v.lf??-99)<(v.k==='tank'?WTK.rl+3:8),tk=v.jm==='esc'?WV.find(o=>o.k==='tank'&&o.team===v.team&&!o.st):null;if(fr||v.jm==='pick'||(tk&&(tk.drv>=0||tk.gun>=0)&&T-(tk.prT??T)<11&&Math.hypot(tk.x-v.x,tk.y-v.y)<700)){v.prT=Math.max(v.prT,T-3);if(fr)v.cmp=0}}
+  if(T-v.prT>11){v.prT=T;v.cmp=(v.cmp||0)+1;
+   if(v.cmp>=2){wCrewOut(v)}
    else if(v.k==='tank'){(v.fpBad=v.fpBad||[]).push([v.x,v.y,T+40]);v.fp=null;if(v.goal){(v.bad=v.bad||[]).push(v.goal);v.badT=T+25}if(v.lane>=0)v.lane=-2}
-   else{wJeepSkip(v);v.av=null;v.wp=null}}
-  else if(T-v.prT<1)v.cmp=0}}
+   else{wJeepSkip(v);v.av=null;v.wp=null;v.ow=null}}}}
 // tireur bot : tank -> cibles ennemies a portee avec vue degagee, sinon 4x4 ou ennemis a pied ; 4x4 -> ennemis visibles
 // on ne tire que si la ligne de tir est degagee : ni mur, ni vehicule (allie ou ennemi) entre la tourelle et la cible ;
 // sinon on prend une autre cible visible, ou on attend (la tourelle reste pointee vers la derniere cible)
@@ -8367,9 +8446,11 @@ function thinkWar(e){if(st.s!=='live'){e.path=[];return}if(e.wv>=0||e.wl>=0)retu
  if(wBotSapper(e,go))return;
  if(e.wrole!=='att'&&wBotTgC4(e,go))return;
  const R=e.wrole,wv_=R==='tdrv'||R==='tgun'?wTV(e.team,'tank',0):(R==='jdrv'||R==='jgun'?wTV(e.team,'jeep',0):(R==='j2drv'||R==='j2gun'?wTV(e.team,'jeep',1):null)),want=wv_?wv_.k:null;
- if(want){const v=wv_&&!wv_.st&&!(e.noVeh>T)&&!(wFuelV(wv_)&&wv_.fu<3)?wv_:null;if(v&&(v.drv<0||v.gun<0)){const d=wvDist(v,e.x,e.y);if(d<44){wEnter(e,v);return}if(want==='tank'||d<2200){go('veh'+v.i+'_'+Math.round(v.x/80)+'_'+Math.round(v.y/80),v.x,v.y,'go');return}}}
- if(!(e.noVeh>T)){const v=WV.find(o=>o.k==='tank'&&o.team===e.team&&!o.st&&(o.drv<0||o.gun<0)&&wvDist(o,e.x,e.y)<260);if(v&&!E.some(m=>m!==e&&m.alive&&m.team===e.team&&m.wv<0&&(m.wrole==='tdrv'||m.wrole==='tgun')&&wvDist(v,m.x,m.y)<700)){if(wvDist(v,e.x,e.y)<44){wEnter(e,v);return}go('veh'+v.i+'_'+Math.round(v.x/80)+'_'+Math.round(v.y/80),v.x,v.y,'go');return}}
+ if(want){const v=wv_&&!wv_.st&&!(e.noVeh>T)&&!(wv_.abT>T)&&!(wFuelV(wv_)&&wv_.fu<3)?wv_:null;if(v&&(v.drv<0||v.gun<0)){const d=wvDist(v,e.x,e.y);if(d<44){wEnter(e,v);return}if(want==='tank'||d<2200){go('veh'+v.i+'_'+Math.round(v.x/80)+'_'+Math.round(v.y/80),v.x,v.y,'go');return}}}
+ if(!(e.noVeh>T)){const v=WV.find(o=>o.k==='tank'&&o.team===e.team&&!o.st&&!(o.abT>T)&&(o.drv<0||o.gun<0)&&wvDist(o,e.x,e.y)<260);if(v&&!E.some(m=>m!==e&&m.alive&&m.team===e.team&&m.wv<0&&(m.wrole==='tdrv'||m.wrole==='tgun')&&wvDist(v,m.x,m.y)<700)){if(wvDist(v,e.x,e.y)<44){wEnter(e,v);return}go('veh'+v.i+'_'+Math.round(v.x/80)+'_'+Math.round(v.y/80),v.x,v.y,'go');return}}
  if(wBotDefend(e,go))return;
+ // equipage descendu d'un vehicule bloque : il monte a l'attaque des cibles ennemies (comme un attaquant)
+ if(e.hlp>T&&R!=='att'&&R!=='def'&&R!=='esc'){const en=WSt.tg.filter(q=>q.team!==e.team&&!q.dead);if(en.length){const q=en[(e.id+((T/40)|0))%en.length],a=e.id*2.3+((T/12)|0),px=q.x+q.w/2+Math.cos(a)*260,py=q.y+q.h/2+Math.sin(a)*260;if(!hit(px,py,16)&&px>40&&py>40&&px<WW-40&&py<WH-40){go('hlp'+Math.round(px/80)+'_'+Math.round(py/80),px,py,'go');e.bold=1;return}}}
  const tk=WV.find(o=>o.k==='tank'&&o.team===e.team);
  // equipage du 2e 4x4 hors d'usage : il defend les cibles ; celui du 1er escorte le tank a pied
  if(want==='jeep'&&R[1]==='2'){thinkWarDef(e,go);return}
@@ -8383,10 +8464,10 @@ function thinkWar(e){if(st.s!=='live'){e.path=[];return}if(e.wv>=0||e.wl>=0)retu
  if(R==='att'){const en=WSt.tg.filter(q=>q.team!==e.team&&!q.dead);if(en.length){const q=en[(e.id+((T/40)|0))%en.length],a=e.id*2.3+((T/12)|0),px=q.x+q.w/2+Math.cos(a)*260,py=q.y+q.h/2+Math.sin(a)*260;if(!hit(px,py,16)&&px>40&&py>40&&px<WW-40&&py<WH-40){go('att'+Math.round(px/80)+'_'+Math.round(py/80),px,py,'go');e.bold=1;return}}}
  thinkTdm(e)}
 // poseur de C4 sur les cibles ennemies : place libre a 22 px du bord (la plus proche, revue toutes les 6 s), puis on avance contre la cible et on pose (action maintenue 2 s)
-function wBotTgC4(e,go){if(!(e.c4>0)||e.wv>=0||e.wl>=0||!e.alive)return false;const R=e.wrole;if(R==='def'||R==='tdrv'||R==='tgun'||(R[0]==='j'&&!wDefFree(e)))return false;
+function wBotTgC4(e,go){if(!(e.c4>0)||e.wv>=0||e.wl>=0||!e.alive)return false;const R=e.wrole,hl=e.hlp>T;if(!hl&&(R==='def'||R==='tdrv'||R==='tgun'||(R[0]==='j'&&!wDefFree(e))))return false;
  const ok=i=>{const q=WSt.tg[i];return q&&!q.dead&&q.team!==e.team&&WSt.c4.filter(c=>c.q===i).length<q.hp};
  let best=e.c4tP&&ok(e.c4tP.i)&&T-e.c4tP.t<6?e.c4tP.i:null;
- if(best===null){let bd=1e9;WSt.tg.forEach((q,i)=>{if(!ok(i))return;const d=Math.hypot(q.x+q.w/2-e.x,q.y+q.h/2-e.y)-Math.max(q.w,q.h)/2;if(R!=='att'&&d>550)return;if(d<bd){bd=d;best=i}})}if(best===null)return false;
+ if(best===null){let bd=1e9;WSt.tg.forEach((q,i)=>{if(!ok(i))return;const d=Math.hypot(q.x+q.w/2-e.x,q.y+q.h/2-e.y)-Math.max(q.w,q.h)/2;if(R!=='att'&&!hl&&d>550)return;if(d<bd){bd=d;best=i}})}if(best===null)return false;
  const q=WSt.tg[best],z=wC4Zone(e);if(z&&z.k==='t'&&z.i===best){e.wAct=1;e.mode='c4';e.tag='c4t';e.path=[[e.x,e.y]];e.pi=0;return true}
  let P=e.c4tP;if(!P||P.i!==best||T-P.t>6){P=null;let bb=1e9;const m=22;
   for(const[ax,ay,bx,by]of[[q.x-m,q.y-m,q.x+q.w+m,q.y-m],[q.x+q.w+m,q.y-m,q.x+q.w+m,q.y+q.h+m],[q.x+q.w+m,q.y+q.h+m,q.x-m,q.y+q.h+m],[q.x-m,q.y+q.h+m,q.x-m,q.y-m]]){const L=Math.hypot(bx-ax,by-ay),n=Math.max(1,Math.round(L/28));
@@ -8405,7 +8486,7 @@ function wDefThreat(t){const C=WSt.dth||(WSt.dth=[null,null]);let c=C[t];if(c&&T
   const L=E.filter(m=>m.alive&&!m.p&&m.team===t&&m.wv<0&&m.wl<0&&ours(m.x)&&wDefFree(m)).sort((a,b)=>Math.hypot(a.x-fx,a.y-fy)-Math.hypot(b.x-fx,b.y-fy));for(const m of L.slice(0,n))rs.add(m.id)}
  c=C[t]={T,tk,inf,rs};return c}
 // bot disponible pour la defense : pas l'equipage du tank ; l'equipage d'un 4x4 seulement si son 4x4 est hors d'usage
-function wDefFree(m){const R=m.wrole;if(R==='tdrv'||R==='tgun')return false;if(R==='jdrv'||R==='jgun'||R==='j2drv'||R==='j2gun'){const v=wTV(m.team,'jeep',R[1]==='2'?1:0);return!v||v.st||wDry(v)||v.fu<3}return true}
+function wDefFree(m){const R=m.wrole;if(m.hlp>T)return true;if(R==='tdrv'||R==='tgun')return false;if(R==='jdrv'||R==='jgun'||R==='j2drv'||R==='j2gun'){const v=wTV(m.team,'jeep',R[1]==='2'?1:0);return!v||v.st||wDry(v)||v.fu<3}return true}
 function wBotDefend(e,go){const c=wDefThreat(e.team);e.dfR=0;if(!c.rs.has(e.id))return false;e.dfR=1;e.bold=1;
  if(c.tk){const tk=c.tk,P=WP(tk),cs=Math.cos(tk.a),sn=Math.sin(tk.a),sd=e.id%2?1:-1;
   // C4 en poche : par l'arriere du tank ; sinon a portee du tireur expose sur le toit, de biais
