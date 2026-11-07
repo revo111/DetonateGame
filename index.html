@@ -3100,7 +3100,7 @@ function netClientTick(dt){
 let inSeq=0,PHIST=[];
 // demi-largeur et demi-hauteur de la zone de jeu visible a l'ecran (camera vue de dessus, champ vertical 50 degres)
 function viewHalf(){const a=(W&&H)?W/H:1.6,vh=CH_*Math.tan(25*Math.PI/180);return{vw:Math.round(vh*a),vh:Math.round(vh)}}
-function netInput(){const i=localInpC||{},rl=relPend;relPend=0;const me=E&&E[localSlot];inSeq++;let dx_=0,dy_=0;if(me){dx_=Math.round((me.pdx||0)*100)/100;dy_=Math.round((me.pdy||0)*100)/100;me.pdx=me.pdy=0;PHIST.push({q:inSeq,x:me.x,y:me.y});if(PHIST.length>90)PHIST.shift()}const vv=viewHalf();return{q:inSeq,vw:vv.vw,vh:vv.vh,dx:dx_,dy:dy_,mx:i.mx||0,my:i.my||0,fire:i.fire||0,act:i.act||0,ej:i.ej||0,bk:i.bk||0,tap:0,rel:rl,ang:aimAng,gs:i.gs||0,gx:i.gx||0,gy:i.gy||0,wq:i.wq||0,dq:i.dq||0,hq:i.hq||0,lq:i.lq||0,zo:i.zo,zs:i.zs,vh:me&&me.sco===1?Math.round((me.bh||0)*1000)/1000:undefined,vv:me&&me.sco===1?Math.round(me.bv||0):undefined}}
+function netInput(){const i=localInpC||{},rl=relPend;relPend=0;const me=E&&E[localSlot];inSeq++;let dx_=0,dy_=0;if(me){dx_=Math.round((me.pdx||0)*100)/100;dy_=Math.round((me.pdy||0)*100)/100;me.pdx=me.pdy=0;PHIST.push({q:inSeq,x:me.x,y:me.y});if(PHIST.length>90)PHIST.shift()}const vv=viewHalf();return{q:inSeq,vw:vv.vw,vh:vv.vh,dx:dx_,dy:dy_,mx:i.mx||0,my:i.my||0,fire:i.fire||0,act:i.act||0,ej:i.ej||0,bk:i.bk||0,tap:0,rel:rl,ang:aimAng,gs:i.gs||0,gx:i.gx||0,gy:i.gy||0,wq:i.wq||0,dq:i.dq||0,hq:i.hq||0,lq:i.lq||0,zo:i.zo,zs:i.zs,mt:i.mt,vh:me&&me.sco===1?Math.round((me.bh||0)*1000)/1000:undefined,vv:me&&me.sco===1?Math.round(me.bv||0):undefined}}
 function netLoop(t){if(!netMode||!netStarted)return;
  if(!isHost&&t-lastNetSend>15){lastNetSend=t;sendNet({type:'input',input:netInput()})}   // commandes ~60 fois par seconde
  if(isHost&&t-lastNetState>50){lastNetState=t;sendNet({type:'state',state:netSnapshot()})}
@@ -3186,7 +3186,7 @@ var HUDTOPR=[0,0,0,0],HUDH=(function(){try{return localStorage.getItem('detonate
 function hudToggle(){HUDH=!HUDH;try{localStorage.setItem('detonate_hudh',HUDH?'1':'0')}catch(x){}try{uiClick()}catch(x){}}
 function hudHit(x,y){for(const r of HUDR)if(x>=r[0]&&x<=r[0]+r[2]&&y>=r[1]&&y<=r[1]+r[3])return 1;return 0}   // AIMT : ennemi vise automatiquement (tactile)
 addEventListener('keydown',e=>{if(e.code==='Tab'){e.preventDefault();SBK=1}});addEventListener('keyup',e=>{if(e.code==='Tab')SBK=0});addEventListener('blur',()=>{SBK=0});
-addEventListener('pointerdown',e=>{if(e.target.tagName==='BUTTON'||(e.target.closest&&e.target.closest('a')))return;if(zElimClick(e)||zSlotDown(e))return;   // un lien (ex. X du fondateur) doit garder son clic
+addEventListener('pointerdown',e=>{if(e.target.tagName==='BUTTON'||(e.target.closest&&e.target.closest('a')))return;if(zElimClick(e)||zSlotDown(e)||(WARM()&&WVIS.msClick(e)))return;   // un lien (ex. X du fondateur) doit garder son clic
 if(isSpectating()){const hitR=r=>e.clientX>=r[0]&&e.clientX<=r[0]+r[2]&&e.clientY>=r[1]&&e.clientY<=r[1]+r[3];
  for(const r of SPECR)if(hitR(r)){specCycle(r[4]);return}for(const r of CARDR)if(hitR(r)&&E[r[4]]&&E[r[4]].alive&&E[r[4]].team===MT&&r[4]!==localSlot){specId=r[4];return}}try{cv.setPointerCapture(e.pointerId)}catch(x){}if(st.s==='end'){const hb=ENDR.find(r=>e.clientX>=r[0]&&e.clientX<=r[0]+r[2]&&e.clientY>=r[1]&&e.clientY<=r[1]+r[3]);if(!hb)return;
  const nw=performance.now();if(ENDP&&nw-ENDP.t<450)return;ENDP={k:hb[4],t:nw};uiClick();
@@ -3220,12 +3220,12 @@ let rt=null;for(const id in P){if(P[id].pend)continue;const p=P[id],dx=p.x-p.x0,
 // glisser = visee manuelle, aimantee sur l'ennemi le plus proche de la direction visee (cone de 26 degres) ; sans cible, le tir part a partir de 22 px
 {const pv=AIMT;AIMT=null;const me=rt&&E&&E.find(x=>x.id===localSlot);if(me&&me.alive&&!me.moto&&me.sco!==1){const dx=rt.x-rt.x0,dy=rt.y-rt.y0,h=Math.hypot(dx,dy),
   an=f=>Math.atan2(f.y-me.y,f.x-me.x),ad=(a,b)=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b))),dd=f=>Math.hypot(f.x-me.x,f.y-me.y),
-  cand=ZMB()?zAimCand(me):(WARM()&&me.wv>=0)?wAimCand(me):E.filter(f=>f.alive&&f.team!==me.team&&f._vis&&dd(f)<640);
+  cand=ZMB()?zAimCand(me):(WARM()&&me.wv>=0)?wAimCand(me):E.filter(f=>f.alive&&f.team!==me.team&&f._vis&&dd(f)<640&&!(WARM()&&f.wv>=0&&f.ws!==1));   // Front : un vehicule sans tireur sur le toit n'est pas vise
  if(h>=10){const da=Math.atan2(dy,dx)+(FLIP?Math.PI:0);let best=null,bs=1e9;for(const f of cand){const d=ad(an(f),da);if(d>(f===pv?.6:.45))continue;const sc_=d*500+dd(f)*.12-(f===pv?60:0)-(ZMB()&&E.includes(f)?400:0);if(sc_<bs){bs=sc_;best=f}}
    ra=1;aimAng=best?an(best):da;AIMT=best;if(ZMB()?(best?zFireOk(me,dd(best)):h>=22):(best||h>=22))fire=1}
  else if(cand.length){const best=(pv&&cand.includes(pv))?pv:cand.sort((a,b)=>dd(a)-dd(b))[0];ra=1;aimAng=an(best);AIMT=best;fire=ZMB()?(zFireOk(me,dd(best))?1:0):1}}}
 if(FLIP){mx=-mx;my=-my}
-if(!ra&&!mouseMode&&(mx||my))aimAng=Math.atan2(my,mx);return{mx,my,fire,act,tap,rel,gs,gx,gy,bk:k(['f'])?1:0,wq:WLQ.seq,dq:DQ.seq,hq:HQ.seq,lq:LQ.seq,zo:ZOQ.L.length?ZOQ.L.slice():undefined,zs:IS_PC&&ZMB()?ZSEL:-1,ej:k(['x'])?1:0}}
+if(!ra&&!mouseMode&&(mx||my))aimAng=Math.atan2(my,mx);return{mx,my,fire,act,tap,rel,gs,gx,gy,bk:k(['f'])?1:0,wq:WLQ.seq,dq:DQ.seq,hq:HQ.seq,lq:LQ.seq,zo:ZOQ.L.length?ZOQ.L.slice():undefined,zs:IS_PC&&ZMB()?ZSEL:-1,ej:k(['x'])?1:0,mt:MSQ.seq?[MSQ.seq,MSQ.c]:undefined}}
 // ---------- update ----------
 function upd(dt){xfx(dt);if(ZMB()){zUpd(dt);return}
 if(st.s==='over'){st.t-=dt;if(!st.boomed&&st.t<5.4){st.boomed=1;}if(st.t<=0){const WPm=WARM()?W_WIN:(HACKM()?HK_WIN:WIN_PTS),MRm=WARM()?W_MAXR:(HACKM()?2*HK_WIN-1:MAX_ROUNDS);if(score[0]>=WPm||score[1]>=WPm||round>=MRm)st.s='end';else newRound()}return}
@@ -4794,7 +4794,7 @@ function drawHackIntro(mt,top){const at=atk==mt,col=at?ROLEC.a:ROLEC.d,tot=round
  const cy=ch+36,r=22,fr=st.t-Math.floor(st.t),n=Math.max(1,Math.ceil(st.t));g.beginPath();g.arc(0,cy,r+4,0,7);g.fillStyle='rgba(8,12,22,.8)';g.fill();g.lineWidth=3;g.strokeStyle='rgba(255,255,255,.15)';g.beginPath();g.arc(0,cy,r,0,7);g.stroke();
  g.strokeStyle=col;g.lineCap='round';g.beginPath();g.arc(0,cy,r,-Math.PI/2,-Math.PI/2+Math.PI*2*fr);g.stroke();g.lineCap='butt';txt(n,0,cy+1,24,'#fff',null,800);g.restore();return(ch+70)*k}
 // cabrage de la moto (touche A ou bouton grenade sur mobile quand on est sur la moto) : 2 s, purement visuel et sonore
-const WHL=2,WHCD=5,LWQ={},WLQ={seq:0,k:0};   // 2 s de cabrage puis 5 s d'attente avant de pouvoir recabrer
+const WHL=2,WHCD=5,LWQ={},WLQ={seq:0,k:0},MSQ={seq:0,c:'',t:0};   // MSQ : choix sur la carte de tir du missile (Front)   // 2 s de cabrage puis 5 s d'attente avant de pouvoir recabrer
 function startWheelie(e){if(!e||!e.moto||!e.alive||e.frz>0||e.wh>0||e.whc>0||st.s!=='live')return;e.wh=WHL;e.whc=WHL+WHCD}
 // temps restant avant de pouvoir recabrer (le client en ligne l'estime a partir de son dernier appui)
 function whWait(e){if(!e)return 0;if(netMode&&!isHost)return e.whp?Math.max(0,(WHL+WHCD)-(performance.now()-e.whp)/1000):0;return Math.max(0,e.whc||0)}
@@ -7763,7 +7763,7 @@ IMPMAT.m='b';IMPMAT.J='b';IMPMAT.D='w';PUFC.D=[0x4a4038,0x8a8070];PUFC.J=[0x8a86
 function WARM(){return!!(CUR&&CUR.mode==='war')&&!TDM()}
 const W_T=360,W_WIN=4,W_MAXR=7,W_TGHP=6,W_BRF=8,W_C4F=1.5,W_C4TB=1.2,W_C4TV=.7,W_IMM=4,W_MCD=45,W_SCD=45,W_REV=5,W_MIMM=8,W_MSP=600;
 const W_C4TT=2,W_C4FT=3,W_MSD=2;   // C4 sur une antenne / un lance-missiles : 2 s de pose, explosion 3 s plus tard, 1 case ; missile : 2 cases
-const WTK={sp:76,turn:.8,trt:1.5,rl:8,range:1150,shv:1500,len:200,wid:112,r:52,c:[-50,0,50],piv:6,gun:-14,mz:178,acc:110};   // dimensions du char (collision : 3 cercles le long de la caisse)
+const WTK={sp:76,turn:.8,trt:1.5,rl:8,range:850,shv:1500,len:200,wid:112,r:52,c:[-50,0,50],piv:6,gun:-14,mz:178,acc:110};   // dimensions du char (collision : 3 cercles le long de la caisse)
 const WJP={sp:135,turn:2.3,trt:6,len:124,wid:68,r:34,c:[-30,30],hp:4,piv:-16,gun:0,cd:.15,resp:20,mz:36,acc:214};   // vitesse 135 (159 - 15 %)
 let WV=[],WSt={tg:[],br:[],c4:[],sh:[],ev:[],evU:0,shU:0,kd:[0,0],dmg:[0,0],sig:'',rnd:-1,ms:[],msU:0,mcd:[0,0],scd:[0,0],rv:[0,0],bx:[]},WLEV=0,WNAV=new Map();
 const WP=v=>v.k==='tank'?WTK:WJP;
@@ -7776,10 +7776,10 @@ const wHost=()=>!netMode||isHost||HEADLESS;
 // ----- debut de manche : cibles tirees au sort dans le camp de chaque equipe, vehicules au garage
 // formes d'objet stables : toutes les proprietes ajoutees en cours de partie existent des le depart (meme ordre pour tous)
 // -> le moteur JavaScript ne recompile plus sans cesse le code des bots et des vehicules (gros gain de CPU sur le serveur)
-const WVK=['job','trl','sp','prx','pry','prT','cmp','bdA','zr','bx','by','bk','stopT','st8','goal','lane','nF','nFT','nd','noUT','sA','sAT','bdC','bdE','gsT','jm','tkS','fm','cw','eg','pgK','pgD','pgT','nst','esK','esI','esB','esR','fvy','fvx','tkL','wp','scT','escM','brev','lf','av','utS','fpBad','wgo','lnB','scrS','scrC','bp','hld','blk','blkT','abT','fp','circT','ow','bad','badT','bT','dryT','pkS','swB'],
- WEK=['wdx','wdy','wdN','ejp','bold','wPull','dfR','look','dx','dy','c4tP','wDg','wDgT','nudge','asT','nx','ny','sw','swa','thr_','wLA','hitF','body','zl','cov','c4z','sco','scI','rsp','wlT','ejV','wRam','gcd','noVI','noVT','vdt','hlp'];
+const WVK=['job','trl','sp','prx','pry','prT','cmp','bdA','zr','bx','by','bk','stopT','st8','goal','lane','nF','nFT','nd','noUT','sA','sAT','bdC','bdE','gsT','jm','tkS','fm','cw','eg','pgK','pgD','pgT','nst','esK','esI','esB','esR','fvy','fvx','tkL','wp','scT','escM','brev','lf','av','utS','fpBad','wcT','wgo','lnB','scrS','scrC','bp','hld','blk','blkT','abT','fp','circT','ow','bad','badT','bT','dryT','pkS','swB'],
+ WEK=['wdx','wdy','wdN','ejp','bold','wPull','dfR','look','dx','dy','c4tP','wDg','wDgT','nudge','asT','nx','ny','sw','swa','thr_','wLA','hitF','body','zl','cov','c4z','sco','scI','rsp','wlT','ejV','wRam','gcd','noVI','noVT','vdt','hlp','mtS','gdT'];
 function wShape(L,K){for(const o of L)for(const k of K)if(!(k in o))o[k]=undefined}
-function warReset(){WSt.bars=null;st.clock=W_T;st.msg='';WSt.c4=[];WSt.sh=[];WSt.ev=[];WSt.kd=[0,0];WSt.dmg=[0,0];WSt.kt=[0,0];WSt.ms=[];WSt.mcd=[T,T];WSt.scd=[T,T];WSt.rv=[0,0];WSt.bj=[null,null];WSt.pre=[0,0];WSt.bx=[];const D=wDeco();
+function warReset(){WSt.bars=null;st.clock=W_T;st.msg='';WSt.c4=[];WSt.sh=[];WSt.ev=[];WSt.kd=[0,0];WSt.dmg=[0,0];WSt.kt=[0,0];WSt.ms=[];WSt.mcd=[T,T];WSt.scd=[T,T];WSt.rv=[0,0];WSt.bj=[null,null];WSt.pre=[0,0];WSt.bx=[];WSt.fc=null;WSt.tkn=null;WSt.gdn=null;const D=wDeco();
  WSt.br=(D.bridges||[]).map(()=>({st:0,c4:0,f:-1,lk:-1}));
  if(wHost()){WSt.tg=[];for(const t of[0,1]){const g=spawnGroup(t),S=(D.slots&&D.slots[g])||[],idx=S.map((_,i)=>i).sort(()=>Math.random()-.5).slice(0,4);let nA=0,nB=0;const KD=['A','B',Math.random()<.5?'A':'B',Math.random()<.5?'A':'B'].sort(()=>Math.random()-.5);
    const L=idx.map((i,j)=>{const[x,y]=S[i],k=KD[j],vert=false,w=k==='A'?150:(vert?90:220),h=k==='A'?150:(vert?220:90);return{team:t,k,x:Math.round(x-w/2),y:Math.round(y-h/2),w,h,hp:W_TGHP,dead:0,a:k==='A'?(g?180:0):(vert?(g?-90:90):(g?180:0))}}).sort((a,b)=>a.y-b.y);
@@ -7846,7 +7846,12 @@ function wC4Zone(e){if(!(e.c4>0)||e.wv>=0||!e.alive)return null;const D=wDeco();
  for(let i=0;i<WSt.tg.length;i++){const q=WSt.tg[i];if(q.dead||q.team===e.team||WSt.c4.filter(c=>c.q===i).length>=q.hp)continue;if(e.x>q.x-36&&e.x<q.x+q.w+36&&e.y>q.y-36&&e.y<q.y+q.h+36)return{k:'t',q,i,id:'t'+i}}
  for(let i=0;i<(D.bridges||[]).length;i++){const b=D.bridges[i],S=WSt.br[i];if(!S||S.st||S.c4>=wBrReq(i))continue;if(e.x>b.x0-30&&e.x<b.x1+30&&e.y>b.y0-24&&e.y<b.y1+24)return{k:'b',i,id:'b'+i}}return null}
 // ----- action (E / Espace / bouton) : appui = monter, changer de place, descendre ; maintenu = poser le C4
-function wInput(e,inp,dt){const a=!!inp.act,pr=a&&!e.wAp;e.wAp=a;const x=!!inp.ej,xp=x&&!e.wXp;e.wXp=x;
+function wInput(e,inp,dt){
+ // carte de tir du missile : cible choisie (v4 = vehicule 4, t2 = cible 2, p1200,800 = point de la carte, x = fermer)
+ if(inp.mt&&inp.mt[0]!==e.mtS){e.mtS=inp.mt[0];const c=String(inp.mt[1]||'');if(c==='x'){if(e.wl>=0)e.wl=-1}else if(e.wl>=0&&wLOk(e)){let o=null;
+  if(c[0]==='v'){const v=WV[+c.slice(1)];if(v&&v.team!==e.team&&!v.st&&v.x!==undefined)o=v}else if(c[0]==='t'){const q=WSt.tg[+c.slice(1)];if(q&&q.team!==e.team&&!q.dead)o=q}
+  if(o)wLaunch(e,o);else if(c[0]==='p'){const[x,y]=c.slice(1).split(',').map(Number);if(isFinite(x)&&isFinite(y))wLaunchAt(e,Math.max(0,Math.min(WW,x)),Math.max(0,Math.min(WH,y)))}}}
+const a=!!inp.act,pr=a&&!e.wAp;e.wAp=a;const x=!!inp.ej,xp=x&&!e.wXp;e.wXp=x;
  if(x&&st.s==='live'&&e.alive){if(e.wv>=0){if(xp)wLeave(e);e.ejp=0;return}if(e.wl<0){if(wPullV(e))wPullTick(e,true,dt);else wEjectTick(e,true,dt);return}}if(!a&&!x)e.ejp=0;wAct(e,a,pr,dt)}
 // anti-camping : vehicule allie occupe par un joueur (plein, ou demande avec X) a portee -> en maintenant 1,2 s, on fait descendre les joueurs a bord ;
 // ils ne peuvent pas remonter dans ce vehicule pendant 15 s
@@ -7928,7 +7933,11 @@ const wMsIdle=t=>!wThreat(t)&&T-(WSt.mcd[t]||0)>20&&WSt.tg.some(q=>q.team!==t&&!
 // tir depuis le lanceur (hote) ; le bot vise sa cible et tire apres un court instant
 function wLFire(e,fire){if(!(e.wl>=0))return;if(!wLOk(e)){e.wl=-1;return}
  if(!e.p){const o=wBotMsPick(e.team);if(!o){e.wl=-1;return}e.ang=Math.atan2(wOY(o)-e.y,wOX(o)-e.x);if(T-(e.wlT||0)>.7)wLaunch(e,o);return}
- if(!fire||st.s!=='live')return;const o=wMsLock(e);if(o)wLaunch(e,o)}
+ }   // joueur : le tir se choisit sur la carte de tir (wInput, champ mt)
+// missile sur un point de la carte : degats de zone, et la cible ou le tank qui s'y trouve
+function wLaunchAt(e,tx,ty){const q=WSt.tg[e.wl],a=(q.a||0)*Math.PI/180,cx=q.x+q.w/2,cy=q.y+q.h/2,x=cx+Math.cos(a)*110,y=cy+Math.sin(a)*110;
+ WSt.ms.push({u:++WSt.msU,x,y,z:135,h:a,t:0,tv:-1,tq:-1,team:e.team,id:e.id,lx:tx,ly:ty});WSt.mcd[e.team]=T+W_MCD;e.wl=-1;
+ wEv('ml',x,y,-1);for(const f of E)if(f.team!==e.team&&f.alive)K[f.team][e.id]={x:e.x,y:e.y,t:T,hear:1}}
 function wLaunch(e,o){const q=WSt.tg[e.wl],a=(q.a||0)*Math.PI/180,cx=q.x+q.w/2,cy=q.y+q.h/2,x=cx+Math.cos(a)*110,y=cy+Math.sin(a)*110,isT=wIsTg(o),tq=isT?WSt.tg.indexOf(o):-1;
  WSt.ms.push({u:++WSt.msU,x,y,z:135,h:a,t:0,tv:isT?-1:o.i,tq,team:e.team,id:e.id,lx:wOX(o),ly:wOY(o)});WSt.mcd[e.team]=T+W_MCD;e.wl=-1;
  wEv('ml',x,y,isT?100+tq:o.i);for(const f of E)if(f.team!==e.team&&f.alive)K[f.team][e.id]={x:e.x,y:e.y,t:T,hear:1}}
@@ -7940,9 +7949,9 @@ function wMsFly(m,dt){m.t+=dt;if(m.tq>=0){const q=WSt.tg[m.tq];if(q){m.lx=q.x+q.
 // impact : tank immobilise 8 s, 4x4 = degats d'un obus, antenne ou lance-missiles = 2 cases de vie en moins
 function wMissiles(dt){for(const m of WSt.ms){const d=wMsFly(m,dt);if(m.dead||!wHost())continue;
   if(d<34||m.t>18){m.dead=1;if(m.tq>=0){const q=WSt.tg[m.tq];wExplode(m.x,m.y,m.team,m.id,q&&!q.dead&&q.team!==m.team?q:null,null,'ms');continue}
-   const v=WV[m.tv],tv=v&&!v.st&&v.team!==m.team&&Math.hypot(v.x-m.x,v.y-m.y)<90?v:null;
+   const v=m.tv>=0?WV[m.tv]:WV.find(o=>!o.st&&o.x!==undefined&&o.team!==m.team&&Math.hypot(o.x-m.x,o.y-m.y)<90),tv=v&&!v.st&&v.team!==m.team&&Math.hypot(v.x-m.x,v.y-m.y)<90?v:null,tq_=m.tv<0?wTgAt(m.x,m.y):null;
    if(tv&&tv.k==='tank'){tv.imm=Math.max(tv.imm,T+W_MIMM);tv.v=0;wEv('imm',tv.x,tv.y,tv.i)}
-   wExplode(m.x,m.y,m.team,m.id,null,tv&&tv.k==='jeep'?tv:null,'ms')}}
+   wExplode(m.x,m.y,m.team,m.id,tq_&&!tq_.dead&&tq_.team!==m.team?tq_:null,tv&&tv.k==='jeep'?tv:null,'ms')}}
  WSt.ms=WSt.ms.filter(m=>!m.dead)}
 // antenne : tous les ennemis apparaissent pour l'equipe pendant 5 s (vue, mini-carte ; les bots connaissent leur position)
 function wReveal(e,q){const t=e.team;WSt.rv[t]=T+W_REV;WSt.scd[t]=T+W_SCD;wEv('rv',q.x+q.w/2,q.y+q.h/2,t)}
@@ -8059,11 +8068,20 @@ function wFire(e,fire,dt){const v=WV[e.wv];if(!v||e.ws!==1||v.st||wDry(v))return
  let df=Math.atan2(Math.sin(e.ang-v.ta),Math.cos(e.ang-v.ta));const tr=P.trt*dt;v.ta+=Math.max(-tr,Math.min(tr,df));df=Math.atan2(Math.sin(e.ang-v.ta),Math.cos(e.ang-v.ta));
  if(st.s!=='live')return;
  if(v.k==='tank'){if(fire)v.fq=T+.7;if(!(v.fq>T)||v.cd>0||Math.abs(df)>.12)return;v.fq=0;v.cd=WTK.rl;const[mx_,my_]=wMuzzle(v);
-  WSt.sh.push({u:++WSt.shU,x:mx_,y:my_,vx:Math.cos(v.ta)*WTK.shv,vy:Math.sin(v.ta)*WTK.shv,t:WTK.range/WTK.shv,team:v.team,id:e.id,v:v.i});
+  WSt.sh.push({u:++WSt.shU,x:mx_,y:my_,x0:mx_,y0:my_,L:wShotEnd(v,v.ta).d,vx:Math.cos(v.ta)*WTK.shv,vy:Math.sin(v.ta)*WTK.shv,t:WTK.range/WTK.shv,team:v.team,id:e.id,v:v.i});
   v.lf=T;wEv('fire',mx_,my_,v.i);wSpotSet(v,1-v.team,1);for(const f of E)if(f.team!==e.team&&f.alive)K[f.team]['tk'+v.i]={x:v.x,y:v.y,t:T,hear:1}}
  else{if(!fire||v.cd>0)return;v.cd=WJP.cd;v.lf=T;const m=BP.find(q=>!q.visible);if(!m)return;const a=v.ta+(Math.random()-.5)*.06,[mx_,my_]=wMuzzle(v);m.visible=true;
   B.push({x:mx_,y:my_,vx:Math.cos(a)*BSPD,vy:Math.sin(a)*BSPD,t:.85*960/BSPD,team:e.team,id:e.id,u:++bseq,m,mg:1});wSpotSet(v,1-v.team,.3);if(!HEADLESS){wMgSnd(mx_,my_,e.id===localSlot);WVIS.mf(mx_,my_)}
   for(const f of E)if(f.team!==e.team&&f.alive&&Math.hypot(f.x-v.x,f.y-v.y)<850)K[f.team][e.id]={x:v.x,y:v.y,t:T,hear:1}}}
+// point d'impact d'un obus tire par le tank v dans la direction a : l'obus passe au-dessus du decor et de son propre camp,
+// et touche la 1re cible ennemie, le 1er vehicule ennemi ou le 1er soldat ennemi sur sa trajectoire ; sinon il tombe a portee maximale.
+// vis (viseur du joueur) : on ignore ce que le camp ne voit pas (vehicules non reperes, soldats caches)
+function wShotEnd(v,a,vis){const[mx,my]=wMuzzle(v),c=Math.cos(a),s=Math.sin(a),R=WTK.range;
+ for(let d=0;d<=R;d+=12){const x=mx+c*d,y=my+s*d;if(x<0||y<0||x>WW||y>WH)return{x,y,d,k:''};
+  const q=wTgAt(x,y);if(q&&!q.dead&&q.team!==v.team)return{x,y,d,k:q.k,o:q};
+  for(const o of WV){if(o===v||o.team===v.team||o.x===undefined||!wSolid(o)||(vis&&!wSpotted(o,v.team)))continue;if(wvDist(o,x,y)<4)return{x,y,d,k:o.st?'W':(o.k==='tank'?'T':'J'),o}}
+  for(const e of E)if(e.alive&&e.team!==v.team&&e.wv<0&&(!vis||e._vis)&&Math.hypot(e.x-x,e.y-y)<16)return{x,y,d,k:'S',o:e}}
+ return{x:mx+c*R,y:my+s*R,d:R,k:''}}
 // balles contre les vehicules : la coque blindee arrete les balles ; une balle dont la trajectoire passe sur le tireur (sur le toit) le touche
 function wBullet(b){for(const v of WV){if(!wSolid(v)||v.drv===b.id||v.gun===b.id)continue;if(wvDist(v,b.x,b.y)>0)continue;
   const g=!v.st&&v.gun>=0?E[v.gun]:null;if(g&&g.alive&&g.team!==b.team){const[gx,gy]=wSeatPos(v,1),L=Math.hypot(b.vx,b.vy)||1,ux=b.vx/L,uy=b.vy/L,dx=gx-b.x,dy=gy-b.y,al=dx*ux+dy*uy,pe=Math.abs(dx*uy-dy*ux);
@@ -8072,8 +8090,8 @@ function wBullet(b){for(const v of WV){if(!wSolid(v)||v.drv===b.id||v.gun===b.id
 function wTgAt(x,y){for(const q of WSt.tg)if(x>=q.x-3&&x<=q.x+q.w+3&&y>=q.y-3&&y<=q.y+q.h+3)return q;return null}
 function wShells(dt){for(const s of WSt.sh){const n=10;let boom=null;
   for(let k=0;k<n&&!boom;k++){s.x+=s.vx*dt/n;s.y+=s.vy*dt/n;if(s.x<0||s.y<0||s.x>WW||s.y>WH){boom=[s.x,s.y,null,null];break}
-   if(hit(s.x,s.y,2,1)){boom=[s.x,s.y,wTgAt(s.x,s.y),null];break}
-   for(const v of WV){if(v.i===s.v||!wSolid(v))continue;if(wvDist(v,s.x,s.y)<2){boom=[s.x,s.y,null,v];break}}
+   {const tq=wTgAt(s.x,s.y);if(tq&&!tq.dead&&tq.team!==s.team){boom=[s.x,s.y,tq,null];break}}
+   for(const v of WV){if(v.i===s.v||v.team===s.team||!wSolid(v))continue;if(wvDist(v,s.x,s.y)<2){boom=[s.x,s.y,null,v];break}}
    if(!boom)for(const e of E)if(e.alive&&e.team!==s.team&&e.wv<0&&Math.hypot(e.x-s.x,e.y-s.y)<16){boom=[s.x,s.y,null,null];break}}
   s.t-=dt;if(!boom&&s.t<=0)boom=[s.x,s.y,null,null];if(boom){s.t=-1;wExplode(boom[0],boom[1],s.team,s.id,boom[2],boom[3],'sh')}}
  WSt.sh=WSt.sh.filter(s=>s.t>0)}
@@ -8131,7 +8149,7 @@ function wEv(k,x,y,a){const q={u:++WSt.evU,k,x:Math.round(x),y:Math.round(y),a:a
 function wSnap(){const r=v=>Math.round(v*10)/10;return{tg:WSt.tg.map(q=>[q.x,q.y,q.w,q.h,q.k,q.team,q.hp,q.n,q.a]),
  v:WV.map(v=>[v.k==='tank'?0:1,v.team,r(v.x),r(v.y),Math.round(v.a*100)/100,Math.round(v.ta*100)/100,v.drv,v.gun,v.hp,v.st,Math.max(0,Math.round((v.imm-T)*10)),Math.round(v.cd*10),Math.round(v.v),Math.max(0,Math.round((v.rsp-T)*10)),(wSpotted(v,0)?1:0)|(wSpotted(v,1)?2:0),wFuelV(v)?Math.round((v.fu??W_FMAX)*10):-1]),
  br:WSt.br.map(b=>[b.st,b.c4,Math.round(b.f*10)]),c4:WSt.c4.map(c=>[Math.round(c.x),Math.round(c.y),c.t,c.v===undefined?-1:c.v,c.v===undefined?-1:c.u|0,c.v===undefined?-1:c.w|0,c.q===undefined?-1:c.q,Math.max(0,Math.round((c.f||0)*10))]),
- sh:WSt.sh.map(s=>[s.u,Math.round(s.x),Math.round(s.y),Math.round(s.vx),Math.round(s.vy),s.team]),ms:WSt.ms.map(m=>[m.u,Math.round(m.x),Math.round(m.y),Math.round(m.z),Math.round(m.h*100)/100,m.tv,m.team,Math.round(m.t*10),m.tq??-1]),
+ sh:WSt.sh.map(s=>[s.u,Math.round(s.x),Math.round(s.y),Math.round(s.vx),Math.round(s.vy),s.team,Math.round(s.L||WTK.range),Math.round(s.x0??s.x),Math.round(s.y0??s.y)]),ms:WSt.ms.map(m=>[m.u,Math.round(m.x),Math.round(m.y),Math.round(m.z),Math.round(m.h*100)/100,m.tv,m.team,Math.round(m.t*10),m.tq??-1]),
  mc:[0,1].map(t=>Math.round(wMsLeft(t)*10)),sc:[0,1].map(t=>Math.round(wSatLeft(t)*10)),rv:[0,1].map(t=>Math.max(0,Math.round(((WSt.rv[t]||0)-T)*10))),ev:WSt.ev.filter(q=>T-q.t<1.5&&T>=q.t).map(q=>[q.u,q.k,q.x,q.y,q.a]),kd:WSt.kd,dm:WSt.dmg,jv:WSt.jv}}
 function wApply(m){if(!m)return;if(round!==WSt.rnd){WSt.rnd=round;WLEV=0}
  WSt.tg=m.tg.map(q=>({x:q[0],y:q[1],w:q[2],h:q[3],k:q[4],team:q[5],hp:q[6],dead:q[6]<=0?1:0,n:q[7],a:q[8]}));
@@ -8140,7 +8158,7 @@ function wApply(m){if(!m)return;if(round!==WSt.rnd){WSt.rnd=round;WLEV=0}
  if(WV.length!==m.v.length)WV=m.v.map((q,i)=>({i,k:q[0]?'jeep':'tank'}));
  m.v.forEach((q,i)=>{const v=WV[i];v.k=q[0]?'jeep':'tank';v.team=q[1];v.nx=q[2];v.ny=q[3];v.na=q[4];v.nta=q[5];v.drv=q[6];v.gun=q[7];v.hp=q[8];if(v.st!==q[9]||v.x===undefined||Math.hypot(v.x-q[2],v.y-q[3])>200||(v.fu<=0&&q[15]>0)){v.x=q[2];v.y=q[3];v.a=q[4];v.ta=q[5]}v.st=q[9];v.imm=T+q[10]/10;v.cd=q[11]/10;v.v=q[12];v.rsp=T+(q[13]||0)/10;v.spF=q[14]??3;v.fu=q[15]>=0?q[15]/10:undefined});
  WSt.c4=m.c4.map(q=>({x:q[0],y:q[1],t:q[2],v:q[3]<0?undefined:q[3],u:q[4],w:q[5],q:q[6]>=0?q[6]:undefined,f:(q[7]||0)/10}));WSt.kd=m.kd;WSt.dmg=m.dm||[0,0];if(m.jv)WSt.jv=m.jv;
- const keep=new Map(WSt.sh.map(s=>[s.u,s]));WSt.sh=m.sh.map(q=>{const o=keep.get(q[0]);if(o){if(Math.hypot(o.x-q[1],o.y-q[2])>80){o.x=q[1];o.y=q[2]}o.vx=q[3];o.vy=q[4];return o}return{u:q[0],x:q[1],y:q[2],vx:q[3],vy:q[4],team:q[5],t:1}});
+ const keep=new Map(WSt.sh.map(s=>[s.u,s]));WSt.sh=m.sh.map(q=>{const o=keep.get(q[0]);if(o){if(Math.hypot(o.x-q[1],o.y-q[2])>80){o.x=q[1];o.y=q[2]}o.vx=q[3];o.vy=q[4];return o}return{u:q[0],x:q[1],y:q[2],vx:q[3],vy:q[4],team:q[5],t:1,L:q[6]||WTK.range,x0:q[7]??q[1],y0:q[8]??q[2]}});
  if(m.ms){const km=new Map(WSt.ms.map(o=>[o.u,o]));WSt.ms=m.ms.map(q=>{const o=km.get(q[0])||{u:q[0],x:q[1],y:q[2],z:q[3],h:q[4]};if(Math.hypot(o.x-q[1],o.y-q[2])>90){o.x=q[1];o.y=q[2]}o.nx=q[1];o.ny=q[2];o.z=o.z??q[3];if(o.lx===undefined){o.lx=q[1];o.ly=q[2]}o.h=q[4];o.tv=q[5];o.team=q[6];o.t=q[7]/10;o.tq=q[8]??-1;return o})}
  if(m.mc){for(const t of[0,1]){WSt.mcd[t]=T+m.mc[t]/10;WSt.scd[t]=T+m.sc[t]/10;WSt.rv[t]=m.rv[t]>0?T+m.rv[t]/10:0}}
  for(const q of m.ev){if(q[0]<=WLEV)continue;WLEV=q[0];if(!HEADLESS&&typeof wFx==='function')wFx({u:q[0],k:q[1],x:q[2],y:q[3],a:q[4]})}}
@@ -8196,16 +8214,16 @@ function wNavDir(F,x,y){const{d,GWn,GHn}=F,gx=Math.floor(x/WNC),gy=Math.floor(y/
  return[ci*WNC+WNC/2-x,cj*WNC+WNC/2-y,cur]}
 // point vise sur une cible : bord le plus proche (la cible elle-meme bloque la ligne de vue vers son centre)
 function wTgPt(q,fx,fy){const cx=Math.max(q.x,Math.min(fx,q.x+q.w)),cy=Math.max(q.y,Math.min(fy,q.y+q.h)),dx=fx-cx,dy=fy-cy,L=Math.hypot(dx,dy)||1;return{x:cx+dx/L*4,y:cy+dy/L*4}}
-function wTgShot(q,x,y,R){const p=wTgPt(q,x,y),d=Math.hypot(p.x-x,p.y-y);return d<R&&los({x,y},p)?p:null}
+function wTgShot(q,x,y,R){const p=wTgPt(q,x,y),d=Math.hypot(p.x-x,p.y-y);return d<R?p:null}   // l'obus passe au-dessus du decor : seule la portee compte
 // position de tir du tank : case libre a 540-860 du but, avec vue degagee sur la cible, la plus proche du tank
 function wFirePos(v,q){const fr=wNavFree(v.k+v.team),GWn=Math.ceil(WW/WNC),cx=q.x+q.w/2,cy=q.y+q.h/2;let best=null,bs=1e9;v.fpBad=(v.fpBad||[]).filter(b=>T<b[2]);
- for(const r of[540,700,860])for(let k=0;k<32;k++){const a=k*Math.PI/16,x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;if(x<80||y<80||x>WW-80||y>WH-80)continue;if(!fr[Math.floor(y/WNC)*GWn+Math.floor(x/WNC)])continue;
-  if(v.fpBad.some(b=>Math.hypot(b[0]-x,b[1]-y)<140))continue;if(!wTgShot(q,x,y,WTK.range*.76))continue;const s=Math.hypot(x-v.x,y-v.y)+(r<600?60:0);if(s<bs){bs=s;best={x:Math.round(x),y:Math.round(y)}}}
+ for(const r of[440,540,630])for(let k=0;k<32;k++){const a=k*Math.PI/16,x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;if(x<80||y<80||x>WW-80||y>WH-80)continue;if(!fr[Math.floor(y/WNC)*GWn+Math.floor(x/WNC)])continue;
+  if(v.fpBad.some(b=>Math.hypot(b[0]-x,b[1]-y)<140))continue;if(!wTgShot(q,x,y,WTK.range*.76))continue;const s=Math.hypot(x-v.x,y-v.y)+(r<500?60:0);if(s<bs){bs=s;best={x:Math.round(x),y:Math.round(y)}}}
  return Object.assign(best||{},{q,t:T+25})}
 // conducteur bot : tank -> axe (pont) puis position de tir face a la cible ennemie la plus proche, arret des que la vue est degagee ;
 // 4x4 -> escorte du tank (roule de concert avec lui, contourne le tank)
 function wBotDrive(e,v,dt){return wBotPost(e,v,wBotDrive0(e,v,dt),dt)}
-function wBotDrive0(e,v,dt){if(st.s!=='live')return[0,0];v.zr=0;if(v.av&&v.av.o>=0&&T<v.av.t+.5){const o=WV[v.av.o];if(o&&wSolid(o)&&Math.abs(o.v||0)<12&&Math.hypot(o.x-v.av.x,o.y-v.av.y)<80)v.av.t=Math.max(v.av.t,T+2)}let gx,gy,rad=4,av=v.av&&T<v.av.t?v.av:null,kmax=1,PL=null;
+function wBotDrive0(e,v,dt){if(st.s!=='live')return[0,0];v.zr=0;if(v.k==='tank'&&(v.drv<0||v.gun<0)){const c=wTankNeed(v.team);let nr=false;for(const id of c.rs){const m=E[id];if(m&&m.alive&&wvDist(v,m.x,m.y)<350){nr=true;break}}if(nr){v.wcT=(v.wcT||0)+dt;if(v.wcT<6){v.zr='equipier';v.bk=0;v.bx=v.x;v.by=v.y;return[0,0]}}else v.wcT=0}else v.wcT=0;if(v.av&&v.av.o>=0&&T<v.av.t+.5){const o=WV[v.av.o];if(o&&wSolid(o)&&Math.abs(o.v||0)<12&&Math.hypot(o.x-v.av.x,o.y-v.av.y)<80)v.av.t=Math.max(v.av.t,T+2)}let gx,gy,rad=4,av=v.av&&T<v.av.t?v.av:null,kmax=1,PL=null;
  if(v.bx===undefined){v.bx=v.x;v.by=v.y;v.bk=0}
  const Z=r=>{v.zr=r||'z';v.bk=0;v.bx=v.x;v.by=v.y;return[0,0]};   // arret voulu : ce n'est pas un blocage
  if(wDry(v))return Z('dry');
@@ -8292,7 +8310,7 @@ function wBlocked(v,why){v.blk=(v.blk||0)+1;v.blkT=T;v.sA=undefined;
  else{if(v.fp&&v.fp.x!==undefined){(v.fpBad=v.fpBad||[]).push([v.fp.x,v.fp.y,T+40]);v.fp=null}else if(v.goal){(v.bad=v.bad||[]).push(v.goal);v.badT=T+20}if(v.lane>=0)v.lane=-2}
  if(v.blk>=3)wCrewOut(v)}
 // equipage bot qui descend d'un vehicule bloque ou arrete pour rien : il aide a pied (cibles ennemies, defense) et ne remonte pas avant 30 s
-function wCrewOut(v){if([v.drv,v.gun].some(id=>id>=0&&E[id]&&E[id].p))return;v.blk=0;v.cmp=0;v.abT=T+30;
+function wCrewOut(v){if(v.k==='tank'){v.blk=0;v.cmp=0;return}if([v.drv,v.gun].some(id=>id>=0&&E[id]&&E[id].p))return;v.blk=0;v.cmp=0;v.abT=T+30;
  for(const id of[v.drv,v.gun])if(wBot(id)){const e=E[id];wLeave(e);e.noVeh=T+30;e.hlp=T+30;e.path=[];e.mode='go'}}
 // pieton bot : un vehicule barre le chemin juste devant -> il longe la caisse (comme un mur) du cote qui va vers son but, en s'ecartant un peu,
 // jusqu'a ce que la voie soit libre (le cote choisi est garde 2 s : pas d'hesitation d'un cote a l'autre)
@@ -8413,9 +8431,9 @@ function wBotCrew(dt){for(const v of WV){if(v.st||v.x===undefined)continue;
 // on ne tire que si la ligne de tir est degagee : ni mur, ni vehicule (allie ou ennemi) entre la tourelle et la cible ;
 // sinon on prend une autre cible visible, ou on attend (la tourelle reste pointee vers la derniere cible)
 function wBotAim(e,v){const x0=v.x,y0=v.y,[sx,sy]=wSeatPos(v,1),S={x:sx,y:sy},clr=(x,y,tv)=>!wSegVeh(sx,sy,x,y,v,1,tv)&&los(S,{x,y});
- if(v.k==='tank'){let best=null,bd=1e9;for(const q of WSt.tg){if(q.team===v.team||q.dead)continue;const p=wTgShot(q,x0,y0,WTK.range*.9);if(p&&clr(p.x,p.y)){const d=Math.hypot(p.x-x0,p.y-y0);if(d<bd){bd=d;best=p}}}
+ if(v.k==='tank'){let best=null,bd=1e9;const F=wFocus(v.team),clrT=()=>true;for(const q of WSt.tg){if(q.team===v.team||q.dead)continue;const p=wTgShot(q,x0,y0,WTK.range*.9);if(p&&clrT(p.x,p.y)){if(q===F){best=p;break}const d=Math.hypot(p.x-x0,p.y-y0);if(d<bd){bd=d;best=p}}}
   if(best){e.wLA={a:Math.atan2(best.y-y0,best.x-x0),t:T};return{ang:e.wLA.a,fire:1}}
-  for(const o of WV)if(o.k==='jeep'&&o.team!==v.team&&!o.st&&Math.hypot(o.x-x0,o.y-y0)<900&&clr(o.x,o.y,o)){e.wLA={a:Math.atan2(o.y-y0,o.x-x0),t:T};return{ang:e.wLA.a,fire:1}}}
+  for(const o of WV)if(o.k==='jeep'&&o.team!==v.team&&!o.st&&Math.hypot(o.x-x0,o.y-y0)<WTK.range*.9&&(wSpotted(o,v.team)||los(S,o))){e.wLA={a:Math.atan2(o.y-y0,o.x-x0),t:T};return{ang:e.wLA.a,fire:1}}}
  const C=[];for(const f of E){if(!f.alive||f.team===v.team||(f.wv>=0&&f.ws===0))continue;const d=Math.hypot(f.x-x0,f.y-y0);if(d>(v.k==='tank'?820:700))continue;
   if((e.sv&&e.sv[f.id])||(!(f.bush>=0&&f.rev<=0&&d>80)&&los(S,f)))C.push([d,f])}
  C.sort((a,b)=>a[0]-b[0]);
@@ -8427,6 +8445,37 @@ function wBotAim(e,v){const x0=v.x,y0=v.y,[sx,sy]=wSeatPos(v,1),S={x:sx,y:sy},cl
 // sans cible : la tourelle regarde vers la cible ennemie la plus proche (ou droit devant)
 function wBotIdle(v){let bq=null,bd=1e9;if(v.k==='tank')for(const q of WSt.tg){if(q.team===v.team||q.dead)continue;const d=Math.hypot(q.x+q.w/2-v.x,q.y+q.h/2-v.y);if(d<bd){bd=d;bq=q}}
  return bq&&bd<1800?Math.atan2(bq.y+bq.h/2-v.y,bq.x+bq.w/2-v.x):v.a}
+// ----- equipe : cible commune, tank a reprendre, tank a defendre -----
+// cible commune de l'equipe t : celle que vise notre tank (s'il a un equipage), sinon la plus abimee puis la plus proche de nos forces ;
+// gardee tant qu'elle tient debout -> les attaquants, les poseurs de C4 et le canon frappent la meme cible au lieu de se disperser
+function wFocus(t){const C=WSt.fc||(WSt.fc=[null,null]),en=WSt.tg.filter(o=>o.team!==t&&!o.dead);if(!en.length)return C[t]=null;
+ const tk=WV.find(o=>o.k==='tank'&&o.team===t&&!o.st&&o.x!==undefined);if(tk&&tk.goal&&en.includes(tk.goal)&&(tk.drv>=0||tk.gun>=0))return C[t]=tk.goal;
+ if(C[t]&&en.includes(C[t]))return C[t];const rx=tk?tk.x:(spawnGroup(t)===0?WW*.3:WW*.7),ry=tk?tk.y:WH/2,sc=q=>q.hp*250+Math.hypot(q.x+q.w/2-rx,q.y+q.h/2-ry);
+ return C[t]=en.slice().sort((a,b)=>sc(a)-sc(b))[0]}
+// notre tank a une place vide : les bots libres les plus proches (son equipage d'abord, jamais un defenseur loin de chez lui) vont le reprendre
+function wTankNeed(t){const C=WSt.tkn||(WSt.tkn=[null,null]);let c=C[t];if(c&&T-c.T<.5)return c;c=C[t]={T,v:null,rs:new Set()};
+ const tk=WV.find(o=>o.k==='tank'&&o.team===t&&!o.st&&o.x!==undefined);if(!tk)return c;const n=(tk.drv<0?1:0)+(tk.gun<0?1:0);if(!n)return c;c.v=tk;
+ const L=E.filter(m=>m.alive&&!m.p&&m.team===t&&m.wv<0&&m.wl<0&&!(m.noVeh>T)&&!(m.noVI===tk.i&&m.noVT>T)&&!(m.c4p>0)).map(m=>{const d=wvDist(tk,m.x,m.y),cr=m.wrole==='tdrv'||m.wrole==='tgun';return{m,d,s:d-(cr?500:0)+(m.wrole==='def'?600:0)}})
+  .filter(q=>q.d<1500&&(q.m.wrole!=='def'||q.d<600)).sort((a,b)=>a.s-b.s);for(const q of L.slice(0,n))c.rs.add(q.m.id);return c}
+function wBotTankTake(e,go){const c=wTankNeed(e.team);if(!c.rs.has(e.id))return false;const v=c.v,d=wvDist(v,e.x,e.y);if(d<44){if(wEnter(e,v))return true;return false}
+ if(d<260){const a=Math.atan2(v.y-e.y,v.x-e.x),L=Math.hypot(v.x-e.x,v.y-e.y);let ok=true;for(let k=20;k<L-40;k+=20){const x_=e.x+Math.cos(a)*k,y_=e.y+Math.sin(a)*k,o_=wvAt(x_,y_,12);if(hit(x_,y_,11)||(o_&&o_!==v)){ok=false;break}}
+  if(ok){e.nudge=.32;e.nx=Math.cos(a);e.ny=Math.sin(a)}}   // tout pres, voie libre : on y va meme en plein combat (le tir continue)
+ go('veh'+v.i+'_'+Math.round(v.x/80)+'_'+Math.round(v.y/80),v.x,v.y,'go');e.bold=1;return true}
+// ennemis a pied pres de notre tank (connus depuis moins de 3 s, a moins de 450 px) : les 3 bots libres les plus proches (a moins de 900 px du tank) vont les chasser
+function wTankGuard(t){const C=WSt.gdn||(WSt.gdn=[null,null]);let c=C[t];if(c&&T-c.T<.5)return c;c=C[t]={T,f:[],rs:new Set()};
+ const tk=WV.find(o=>o.k==='tank'&&o.team===t&&!o.st&&o.x!==undefined);if(!tk)return c;
+ for(const f of E){if(!f.alive||f.team===t||f.wv>=0)continue;const k=K[t][f.id];if(!k||T-k.t>3)continue;const d=Math.hypot(k.x-tk.x,k.y-tk.y);if(d<450)c.f.push({x:k.x,y:k.y,d,c4:f.c4p>0})}
+ if(!c.f.length)return c;c.f.sort((a,b)=>(b.c4-a.c4)||(a.d-b.d));
+ const L=E.filter(m=>m.alive&&!m.p&&m.team===t&&m.wv<0&&m.wl<0&&m.wrole!=='def'&&!(m.c4p>0)&&Math.hypot(m.x-tk.x,m.y-tk.y)<900).sort((a,b)=>Math.hypot(a.x-tk.x,a.y-tk.y)-Math.hypot(b.x-tk.x,b.y-tk.y));
+ for(const m of L.slice(0,3))c.rs.add(m.id);return c}
+function wGuardTank(e,go){const c=wTankGuard(e.team);if(!c.rs.has(e.id)||!c.f.length)return false;const f=c.f[0],a=Math.atan2(e.y-f.y,e.x-f.x)+((e.id%3)-1)*.6,x=f.x+Math.cos(a)*70,y=f.y+Math.sin(a)*70;
+ if(hit(x,y,14))return false;go('gdt'+Math.round(x/60)+'_'+Math.round(y/60),x,y,'go');e.bold=1;return true}
+// attaque groupee : le tank roule encore loin de la cible commune -> on l'accompagne (derriere lui, sur les flancs) ; sinon on se poste autour de la cible
+function wAttack(e,go){const q=wFocus(e.team);if(!q)return false;const cx=q.x+q.w/2,cy=q.y+q.h/2,tk=WV.find(o=>o.k==='tank'&&o.team===e.team&&!o.st&&o.x!==undefined&&(o.drv>=0||o.gun>=0));
+ if(tk&&Math.hypot(cx-tk.x,cy-tk.y)>900&&Math.hypot(tk.x-e.x,tk.y-e.y)<1800){const c=Math.cos(tk.a),s_=Math.sin(tk.a),sd=e.id%2?1:-1,bk=150+(e.id%3)*40,bx=tk.x-c*bk-s_*sd*110,by=tk.y-s_*bk+c*sd*110;
+  if(!hit(bx,by,16)){if(Math.hypot(bx-e.x,by-e.y)>60)go('aes'+Math.round(bx/70)+'_'+Math.round(by/70),bx,by,'go');else e.mode='hold';e.bold=1;return true}}
+ const a=e.id*2.3+((T/12)|0);for(let k=0;k<6;k++){const r=230+k*25,aa=a+k*.9,px=cx+Math.cos(aa)*r,py=cy+Math.sin(aa)*r;if(!hit(px,py,16)&&px>40&&py>40&&px<WW-40&&py<WH-40){go('att'+Math.round(px/80)+'_'+Math.round(py/80),px,py,'go');e.bold=1;return true}}
+ return false}
 // bots a pied : roles (monter dans le tank / le 4x4, escorter, defendre, attaquer) ; C4 sur le vehicule ennemi tout proche
 function thinkWar(e){if(st.s!=='live'){e.path=[];return}if(e.wv>=0||e.wl>=0)return;e.bold=0;e.wAct=0;e.wPull=0;
  const go=(tag,x,y,mode)=>{if(e.tag!==tag){e.tag=tag;e.path=[[x,y]];e.pi=0}e.mode=mode||'go'};
@@ -8441,6 +8490,8 @@ function thinkWar(e){if(st.s!=='live'){e.path=[];return}if(e.wv>=0||e.wl>=0)retu
   if(d<40){e.wPull=1;e.path=[];e.mode='hold';e.tag='pull';return}const P=WP(v),c=Math.cos(v.a),s_=Math.sin(v.a),sd=(-(e.x-v.x)*s_+(e.y-v.y)*c)<0?-1:1,tx=v.x-s_*sd*(P.wid/2+16),ty=v.y+c*sd*(P.wid/2+16);
   go('pul'+v.i+'_'+Math.round(tx/40)+'_'+Math.round(ty/40),tx,ty,'go');e.bold=1;return}
  if(wBotFlee(e,go))return;
+ if(wBotTankTake(e,go))return;   // notre tank a une place vide : on le reprend
+ if(wGuardTank(e,go))return;     // ennemis tout pres de notre tank : on le defend
  if(wBotSupport(e,go))return;
  if(e.wrole==='att'&&wBotTgC4(e,go))return;
  if(wBotSapper(e,go))return;
@@ -8450,7 +8501,7 @@ function thinkWar(e){if(st.s!=='live'){e.path=[];return}if(e.wv>=0||e.wl>=0)retu
  if(!(e.noVeh>T)){const v=WV.find(o=>o.k==='tank'&&o.team===e.team&&!o.st&&!(o.abT>T)&&(o.drv<0||o.gun<0)&&wvDist(o,e.x,e.y)<260);if(v&&!E.some(m=>m!==e&&m.alive&&m.team===e.team&&m.wv<0&&(m.wrole==='tdrv'||m.wrole==='tgun')&&wvDist(v,m.x,m.y)<700)){if(wvDist(v,e.x,e.y)<44){wEnter(e,v);return}go('veh'+v.i+'_'+Math.round(v.x/80)+'_'+Math.round(v.y/80),v.x,v.y,'go');return}}
  if(wBotDefend(e,go))return;
  // equipage descendu d'un vehicule bloque : il monte a l'attaque des cibles ennemies (comme un attaquant)
- if(e.hlp>T&&R!=='att'&&R!=='def'&&R!=='esc'){const en=WSt.tg.filter(q=>q.team!==e.team&&!q.dead);if(en.length){const q=en[(e.id+((T/40)|0))%en.length],a=e.id*2.3+((T/12)|0),px=q.x+q.w/2+Math.cos(a)*260,py=q.y+q.h/2+Math.sin(a)*260;if(!hit(px,py,16)&&px>40&&py>40&&px<WW-40&&py<WH-40){go('hlp'+Math.round(px/80)+'_'+Math.round(py/80),px,py,'go');e.bold=1;return}}}
+ if((R==='att'||(e.hlp>T&&R!=='def'&&R!=='esc'))&&wAttack(e,go))return;
  const tk=WV.find(o=>o.k==='tank'&&o.team===e.team);
  // equipage du 2e 4x4 hors d'usage : il defend les cibles ; celui du 1er escorte le tank a pied
  if(want==='jeep'&&R[1]==='2'){thinkWarDef(e,go);return}
@@ -8461,12 +8512,12 @@ function thinkWar(e){if(st.s!=='live'){e.path=[];return}if(e.wv>=0||e.wl>=0)retu
   // un vehicule ennemi approche des cibles : on va a sa rencontre (tirer sur le tireur, poser le C4)
   for(const v of WV){if(v.st||v.team===e.team||!wSpotted(v,e.team)||!own.some(q=>Math.hypot(q.x+q.w/2-v.x,q.y+q.h/2-v.y)<1100))continue;const a=Math.atan2(e.y-v.y,e.x-v.x)+((e.id%3)-1)*.5,px=v.x+Math.cos(a)*170,py=v.y+Math.sin(a)*170;if(!hit(px,py,16)){go('int'+v.i+'_'+Math.round(px/90)+'_'+Math.round(py/90),px,py,'go');e.bold=1;return}}
   if(own.length){const q=own[(e.id+((T/25)|0))%own.length],a=e.id*1.7+((T/9)|0),px=q.x+q.w/2+Math.cos(a)*170,py=q.y+q.h/2+Math.sin(a)*170;if(!hit(px,py,16)){go('def'+Math.round(px/60)+'_'+Math.round(py/60),px,py,'hold');return}}}
- if(R==='att'){const en=WSt.tg.filter(q=>q.team!==e.team&&!q.dead);if(en.length){const q=en[(e.id+((T/40)|0))%en.length],a=e.id*2.3+((T/12)|0),px=q.x+q.w/2+Math.cos(a)*260,py=q.y+q.h/2+Math.sin(a)*260;if(!hit(px,py,16)&&px>40&&py>40&&px<WW-40&&py<WH-40){go('att'+Math.round(px/80)+'_'+Math.round(py/80),px,py,'go');e.bold=1;return}}}
  thinkTdm(e)}
 // poseur de C4 sur les cibles ennemies : place libre a 22 px du bord (la plus proche, revue toutes les 6 s), puis on avance contre la cible et on pose (action maintenue 2 s)
 function wBotTgC4(e,go){if(!(e.c4>0)||e.wv>=0||e.wl>=0||!e.alive)return false;const R=e.wrole,hl=e.hlp>T;if(!hl&&(R==='def'||R==='tdrv'||R==='tgun'||(R[0]==='j'&&!wDefFree(e))))return false;
  const ok=i=>{const q=WSt.tg[i];return q&&!q.dead&&q.team!==e.team&&WSt.c4.filter(c=>c.q===i).length<q.hp};
  let best=e.c4tP&&ok(e.c4tP.i)&&T-e.c4tP.t<6?e.c4tP.i:null;
+ {const F=wFocus(e.team),fi=F?WSt.tg.indexOf(F):-1;if(fi>=0&&ok(fi)&&(R==='att'||hl||Math.hypot(F.x+F.w/2-e.x,F.y+F.h/2-e.y)<900))best=fi}   // cible commune de l'equipe
  if(best===null){let bd=1e9;WSt.tg.forEach((q,i)=>{if(!ok(i))return;const d=Math.hypot(q.x+q.w/2-e.x,q.y+q.h/2-e.y)-Math.max(q.w,q.h)/2;if(R!=='att'&&!hl&&d>550)return;if(d<bd){bd=d;best=i}})}if(best===null)return false;
  const q=WSt.tg[best],z=wC4Zone(e);if(z&&z.k==='t'&&z.i===best){e.wAct=1;e.mode='c4';e.tag='c4t';e.path=[[e.x,e.y]];e.pi=0;return true}
  let P=e.c4tP;if(!P||P.i!==best||T-P.t>6){P=null;let bb=1e9;const m=22;
@@ -8904,7 +8955,7 @@ const WVIS=(()=>{
   for(const p of TRP){if(p.t>=p.L)continue;p.t+=dt;const k=p.t/p.L;if(k>=1){p.s.visible=false;continue}p.s.position.y+=6*dt;p.s.scale.setScalar(p.sz*(1+k*2.6));p.s.material.opacity=.5*(1-k)*Math.min(1,k*10+.3)}
   for(const p of RNG){if(p.t>=p.L)continue;p.t+=dt;if(p.t<0)continue;const k=p.t/p.L;if(k>=1){p.r.visible=false;continue}p.r.visible=true;const r=30+k*900;p.r.scale.set(r,r,r);p.r.material.opacity=.75*(1-k)}
   // obus
-  SHP.forEach((g_,i)=>{const s=WSt.sh[i];g_.visible=!!s;if(!s)return;g_.position.set(s.x,30,s.y);g_.rotation.y=-Math.atan2(s.vy,s.vx)});
+  SHP.forEach((g_,i)=>{const s=WSt.sh[i];g_.visible=!!s;if(!s)return;const L_=Math.max(60,s.L||WTK.range),ap=Math.min(170,L_*.22),pp=Math.min(1,Math.hypot(s.x-(s.x0??s.x),s.y-(s.y0??s.y))/L_);g_.position.set(s.x,30+ap*4*pp*(1-pp)-12*pp,s.y);g_.rotation.y=-Math.atan2(s.vy,s.vx);g_.rotation.z=Math.atan(ap*4*(1-2*pp)/L_)});
   // sprites
   for(const p of SMP){if(p.t>=p.L)continue;p.t+=dt;const k=p.t/p.L;if(k>=1){p.s.visible=false;continue}p.s.position.y+=p.vy*dt;p.s.position.x+=p.dx*dt;p.s.scale.setScalar(p.sz*(1+k*1.6));p.s.material.opacity=.6*Math.min(1,k*6)*(1-k)}
   for(const p of GLP){if(p.t>=p.L)continue;p.t+=dt;const k=p.t/p.L;if(k>=1){p.s.visible=false;continue}p.s.scale.setScalar(p.sz*(1+k*.6));p.s.material.opacity=1-k}
@@ -8997,7 +9048,7 @@ const WVIS=(()=>{
  function fx(q){if(HEADLESS)return;init();const near=Math.hypot(q.x-CP.x,q.y-CP.y)<900,me=E&&E[localSlot],mt=me?me.team:0;
   if(q.k==='fire'){const o=VM[q.a];if(o)o.rc=1;glow(q.x,34,q.y,70,.12,0xfff2c0);smoke(q.x,30,q.y,34,0x6a6258,1.6,30,0);cannonSnd(q.x,q.y);if(near&&typeof gShake!=='undefined')gShake=Math.max(gShake,5)}
   else if(q.k==='sh'||q.k==='c4b'){fxBoom(q.x,q.y,0);if(WAR.shell)WAR.shell(q.x,q.y,near);if(q.a)for(let i=0;i<5;i++)glow(q.x+(Math.random()-.5)*30,20+Math.random()*20,q.y+(Math.random()-.5)*30,22,.2,0xffe090)}
-  else if(q.k==='tgd'){fxBoom(q.x,q.y,0);msBoomSnd(q.x,q.y);if(near&&typeof gShake!=='undefined')gShake=Math.max(gShake,14);setTimeout(()=>{fxBoom(q.x+30,q.y-20,0)},180);for(let i=0;i<8;i++)smoke(q.x+(Math.random()-.5)*80,30,q.y+(Math.random()-.5)*50,50,0x221d18,3.5,80,20);const tg=WSt.tg[q.a];if(tg){const own=tg.team===mt;banner(own?(tg.k==='A'?LG('Votre antenne est détruite !','Your radar is destroyed!'):LG('Votre lance-missiles est détruit !','Your launcher is destroyed!')):(tg.k==='A'?LG('Antenne ennemie détruite !','Enemy radar destroyed!'):LG('Lance-missiles ennemi détruit !','Enemy launcher destroyed!')),own?'#ff6a5a':'#7dff9a',2600)}}
+  else if(q.k==='tgd'){fxBoom(q.x,q.y,0);msBoomSnd(q.x,q.y);if(near&&typeof gShake!=='undefined')gShake=Math.max(gShake,14);setTimeout(()=>{fxBoom(q.x+30,q.y-20,0)},180);for(let i=0;i<8;i++)smoke(q.x+(Math.random()-.5)*80,30,q.y+(Math.random()-.5)*50,50,0x221d18,3.5,80,20);const tg=WSt.tg[q.a];if(tg){const own=tg.team===mt;banner(own?(tg.k==='A'?LG('Votre antenne ','Your radar ')+tgName(tg)+LG(' est détruite !',' is destroyed!'):LG('Votre lance-missiles ','Your launcher ')+tgName(tg)+LG(' est détruit !',' is destroyed!')):(tg.k==='A'?LG('Antenne ennemie ','Enemy radar ')+tgName(tg)+LG(' détruite !',' destroyed!'):LG('Lance-missiles ennemi ','Enemy launcher ')+tgName(tg)+LG(' détruit !',' destroyed!')),own?'#ff6a5a':'#7dff9a',2600)}}
   else if(q.k==='vx'){fxBoom(q.x,q.y,0);setTimeout(()=>fxBoom(q.x+(Math.random()-.5)*50,q.y+(Math.random()-.5)*50,0),90);msBoomSnd(q.x,q.y);for(let i=0;i<6;i++){smoke(q.x+(Math.random()-.5)*60,30,q.y+(Math.random()-.5)*60,56,0x1e1a16,3.6,80,18);glow(q.x+(Math.random()-.5)*50,20+Math.random()*30,q.y+(Math.random()-.5)*50,46,.35,0xffb060)}if(near&&typeof gShake!=='undefined')gShake=Math.max(gShake,12)}
   else if(q.k==='fo'){const v=WV[q.a],mine=!!(me&&me.alive&&me.wv===q.a);if(typeof fuelOutSnd==='function')fuelOutSnd(mine?1:Math.max(0,1-Math.hypot(q.x-CP.x,q.y-CP.y)/1100)*.8,q.x-CP.x);smoke(q.x,22,q.y,26,0x3a3630,1.6,40,8);
    if(mine)banner(LG('4x4 à sec ! Descends et combats','4x4 out of fuel! Get out and fight'),'#ffb347',3000,1);else if(v&&v.team===mt&&near)banner(LG('Un 4x4 allié est à sec','An allied 4x4 ran dry'),'#ffb347',2000)}
@@ -9007,12 +9058,12 @@ const WVIS=(()=>{
   else if(q.k==='jh'){for(let i=0;i<4;i++)glow(q.x+(Math.random()-.5)*50,30,q.y+(Math.random()-.5)*40,20,.15,0xfff0a0)}
   else if(q.k==='jd'){fxBoom(q.x,q.y,0);msBoomSnd(q.x,q.y);for(let i=0;i<8;i++)smoke(q.x+(Math.random()-.5)*60,30,q.y+(Math.random()-.5)*50,50,0x221d18,3.4,70,16);if(near&&typeof gShake!=='undefined')gShake=Math.max(gShake,12);const v=WV[q.a];if(v)banner(v.team===mt?LG('Votre 4x4 est détruit','Your 4x4 is destroyed'):LG('4x4 ennemi détruit','Enemy 4x4 destroyed'),v.team===mt?'#ff8a6a':'#7dff9a')}
   else if(q.k==='c4'){if(near)beep(1600,2,.1)}
-  else if(q.k==='c4t'){const tg=WSt.tg[q.a];if(near)beep(1600,2,.1);if(tg&&tg.team===mt){banner(tg.k==='A'?LG('C4 posé sur votre antenne !','C4 planted on your radar!'):LG('C4 posé sur votre lance-missiles !','C4 planted on your launcher!'),'#ff5a3a',2400);beep(1200,3,.12,.08)}}
+  else if(q.k==='c4t'){const tg=WSt.tg[q.a];if(near)beep(1600,2,.1);if(tg&&tg.team===mt){banner(LG('C4 posé sur votre ','C4 planted on your ')+tgK(tg)+' !','#ff5a3a',2400);beep(1200,3,.12,.08)}}
   else if(q.k==='arm'){beep(2000,4,.16,.1);banner(LG('Pont piégé : explosion dans 8 s !','Bridge rigged: blast in 8 s!'),'#ffb03a',2800)}
   else if(q.k==='brg'){const b=(wDeco().bridges||[])[q.a];if(b){for(let i=0;i<4;i++)setTimeout(()=>fxBoom(b.x0+(b.x1-b.x0)*(i+.5)/4,b.y+(Math.random()-.5)*40,0),i*140);for(let i=0;i<10;i++)smoke(b.x0+Math.random()*(b.x1-b.x0),20,b.y+(Math.random()-.5)*80,60,0x6a6258,4,60,10)}if(WAR.bridge)WAR.bridge(q.a,1);if(typeof gShake!=='undefined')gShake=Math.max(gShake,near?20:6);banner(LG('Pont détruit !','Bridge destroyed!'),'#ffb03a',2600)}
   else if(q.k==='imm'){for(let i=0;i<6;i++)glow(q.x+(Math.random()-.5)*60,30,q.y+(Math.random()-.5)*40,30,.25,0xfff0a0);const v=WV[q.a];if(v){const n=Math.max(1,Math.round(v.imm-T))+' s';banner(v.team===mt?LG('Votre tank est immobilisé (','Your tank is disabled (')+n+')':LG('Tank ennemi immobilisé (','Enemy tank disabled (')+n+')',v.team===mt?'#ff8a6a':'#7dff9a')}}
   else if(q.k==='ml'){glow(q.x,150,q.y,160,.35,0xffd080);for(let i=0;i<14;i++)smoke(q.x+(Math.random()-.5)*90,40+Math.random()*60,q.y+(Math.random()-.5)*90,56,0xb8b2a6,3.2,40,(Math.random()-.5)*40);msSnd(q.x,q.y);if(near&&typeof gShake!=='undefined')gShake=Math.max(gShake,6);
-   const tq=q.a>=100?WSt.tg[q.a-100]:null,v=tq?null:WV[q.a],o=tq||v;if(o){if(o.team===mt){banner(LG('MISSILE EN APPROCHE : ','INCOMING MISSILE: ')+(tq?(tq.k==='A'?LG('votre antenne !','your radar!'):LG('votre lance-missiles !','your launcher!')):(v.k==='tank'?LG('votre tank !','your tank!'):LG('votre 4x4 !','your 4x4!'))),'#ff5a3a',3200);beep(1900,6,.13,.09)}else banner(LG('Missile lancé sur ','Missile fired at ')+(tq?(tq.k==='A'?LG('l’antenne ennemie','the enemy radar'):LG('le lance-missiles ennemi','the enemy launcher')):(v.k==='tank'?LG('le tank ennemi','the enemy tank'):LG('le 4x4 ennemi','the enemy 4x4'))),'#ffd23a',2600)}}
+   const tq=q.a>=100?WSt.tg[q.a-100]:null,v=tq?null:WV[q.a],o=tq||v;if(o){if(o.team===mt){banner(LG('MISSILE EN APPROCHE : ','INCOMING MISSILE: ')+(tq?LG('votre ','your ')+tgK(tq)+' !':(v.k==='tank'?LG('votre tank !','your tank!'):LG('votre 4x4 !','your 4x4!'))),'#ff5a3a',3200);beep(1900,6,.13,.09)}else banner(LG('Missile lancé sur ','Missile fired at ')+(tq?(tq.k==='A'?LG('l’antenne ennemie ','the enemy radar '):LG('le lance-missiles ennemi ','the enemy launcher '))+tgName(tq):(v.k==='tank'?LG('le tank ennemi','the enemy tank'):LG('le 4x4 ennemi','the enemy 4x4'))),'#ffd23a',2600)}}
   else if(q.k==='ms'){fxBoom(q.x,q.y,0);setTimeout(()=>fxBoom(q.x+(Math.random()-.5)*40,q.y+(Math.random()-.5)*40,0),120);for(let i=0;i<10;i++){smoke(q.x+(Math.random()-.5)*70,30,q.y+(Math.random()-.5)*70,60,0x2a2620,3.4,70,16);glow(q.x+(Math.random()-.5)*50,20+Math.random()*30,q.y+(Math.random()-.5)*50,40,.3,0xffc070)}msBoomSnd(q.x,q.y);if(typeof gShake!=='undefined')gShake=Math.max(gShake,near?16:4)}
   else if(q.k==='rv'){const own=q.a===mt,col=own?0x7dff9a:0xff5a3a;for(let i=0;i<3;i++)ring(q.x,q.y,col,i*.4);pingSnd(own);banner(own?LG('Antenne : ennemis révélés pendant 5 s','Radar: enemies revealed for 5 s'):LG('Repérés par l’antenne ennemie !','Spotted by the enemy radar!'),own?'#7dff9a':'#ff5a3a',2800)}}
  // ---------- ATH ----------
@@ -9021,7 +9072,8 @@ const WVIS=(()=>{
  // (pas « AC » : ce nom est celui du contexte audio, le masquer coupait tous les sons du Front)
  const TC=['#5ab4ff','#e8913a'],TL=['#e6f2ff','#fbe1c4'],TNM=t=>t?LG('AXE','AXIS'):LG('ALLIÉS','ALLIES');let ALLYC=TC[0],ENEMC=TC[1];const tcol=mt=>{ALLYC=TC[mt]||TC[0];ENEMC=TC[1-mt]||TC[1]};
  const tgName=q=>q.k+q.n;
- const tgNm=(q,own)=>q.k==='A'?(own?LG('VOTRE ANTENNE','YOUR RADAR'):LG('ANTENNE ENNEMIE','ENEMY RADAR')):(own?LG('VOTRE LANCE-MISSILES','YOUR LAUNCHER'):LG('LANCE-MISSILES ENNEMI','ENEMY LAUNCHER'));
+ const tgNm=(q,own)=>tgName(q)+' · '+(q.k==='A'?(own?LG('VOTRE ANTENNE','YOUR RADAR'):LG('ANTENNE ENNEMIE','ENEMY RADAR')):(own?LG('VOTRE LANCE-MISSILES','YOUR LAUNCHER'):LG('LANCE-MISSILES ENNEMI','ENEMY LAUNCHER')));
+ const tgK=q=>(q.k==='A'?LG('antenne ','radar '):LG('lance-missiles ','launcher '))+tgName(q);
  const tgOf=q=>q.k==='A'?LG('l’antenne','the radar'):LG('le lance-missiles','the launcher');
  // icones vectorielles (s = taille en px) : A antenne, B lance-missiles, T tank, J 4x4, X viseur
  function ico(k,x,y,s,col){g.save();g.translate(x,y);const u=s/24;g.scale(u,u);g.fillStyle=col;g.strokeStyle=col;g.lineCap='round';g.lineJoin='round';g.lineWidth=2.6;
@@ -9059,13 +9111,13 @@ const WVIS=(()=>{
    topF=(x0,y0,w)=>{g.globalAlpha=typeof HUDTOPR!=='undefined'&&HUDTOPR&&HUDTOPR[3]>0&&y0<HUDTOPR[3]&&x0+w>HUDTOPR[0]&&x0<HUDTOPR[2]?.28:1};   // pas d'etiquettes sous la carte d'intro ; estompees sous le haut de l'ATH
   // cibles : nom clair (VOTRE ANTENNE / ANTENNE ENNEMIE), icone, barre de vie ; etat de son missile / de son antenne ; fleche au bord pour les cibles ennemies
   for(const q of WSt.tg){const cx=q.x+q.w/2,cy=q.y+q.h/2,[x,y]=wscr(cx,cy,110),own=q.team===mt,col=own?ALLYC:ENEMC;
-   if(onS(x,y)&&lab_){const dd=!!q.dead,nm=dd?(q.k==='A'?LG('ANTENNE DÉTRUITE','RADAR DESTROYED'):LG('LANCE-MISSILES DÉTRUIT','LAUNCHER DESTROYED')):tgNm(q,own);
+   if(onS(x,y)&&lab_){const dd=!!q.dead,nm=dd?tgName(q)+' · '+(q.k==='A'?LG('ANTENNE DÉTRUITE','RADAR DESTROYED'):LG('LANCE-MISSILES DÉTRUIT','LAUNCHER DESTROYED')):tgNm(q,own);
     g.font='800 12px system-ui';const en=!own&&!dd,w=g.measureText(nm).width+(en?48:40),h=24,x0=x-w/2,y0=y-38;topF(x0,y0,w);
     pill(x0,y0,w,h,12,dd?'rgba(20,22,26,.8)':'rgba(8,12,22,.86)');if(!dd)frameR(x0,y0,w,h,12,hexA(col,.9),1.6);badge(q.k,x0+(en?15:12),y0+12,10,col,en,dd);txt(nm,x0+(en?35:27),y0+12.5,12,dd?'rgba(255,255,255,.5)':TL[q.team],'left',800);
     if(!dd){hpBar(x,y0+h+6,74,q.hp,W_TGHP,col);
      if(own){const L=q.k==='B'?wMsLeft(mt):wSatLeft(mt),rd=L<=0,rv=q.k==='A'&&WSt.rv[mt]>T,s_=q.k==='B'?(rd?LG('MISSILE PRÊT','MISSILE READY'):LG('missile dans ','missile in ')+fmtT(L)):(rv?LG('ENNEMIS RÉVÉLÉS','ENEMIES REVEALED'):(rd?LG('ANTENNE PRÊTE','RADAR READY'):LG('antenne dans ','radar in ')+fmtT(L)));
       txt(s_,x,y0+h+22,10.5,rd||rv?'#7dff9a':'rgba(255,255,255,.62)',null,800)}}g.globalAlpha=1}
-   else if(!onS(x,y)&&!own&&!q.dead&&hm&&hm.alive&&st.s==='live')edge(x,y,ENEMC,'',[q.k])}
+   else if(!onS(x,y)&&!own&&!q.dead&&hm&&hm.alive&&st.s==='live')edge(x,y,ENEMC,tgName(q),[q.k])}
   // vehicules : allies = icone + places (et blindage / essence du 4x4), ennemis = chevron rouge (+ blindage du 4x4)
   for(const v of WV){if(v.x===undefined)continue;const[x,y]=wscr(v.x,v.y,v.k==='tank'?112:90),own=v.team===mt,col=own?ALLYC:ENEMC;
    if(onS(x,y)){if(!lab_)continue;topF(x-30,y-56,60);
@@ -9088,7 +9140,7 @@ const WVIS=(()=>{
   if(!hm){EDG=[];return}
   // aide contextuelle (PC) et pose du C4
   if(hm.alive&&st.s==='live'){const[px,py]=wscr(hm.x,hm.y,70);
-   if(hm.wl>=0)lPanel(hm,mt);
+   if(hm.wl>=0){}   // lance-missiles : carte de tir (msMap, dessinee par-dessus tout)
    else if(hm.wv<0){const[v,d]=wNearV(hm,hm.team),z=wC4Zone(hm),Lq=wTgNear(hm,'B'),Aq=wTgNear(hm,'A'),ejv=wEjectV(hm,false),plv=wPullV(hm);let t_='';if(plv&&(IS_PC||!(hm.c4>0)))t_=(IS_PC?LG('Maintiens X · faire descendre l’équipage ennemi','Hold X · pull the enemy crew out'):LG('Maintiens le bouton · faire descendre l’équipage','Hold the button · pull the crew out'));
     else if(ejv&&!wCanEnter(hm,ejv))t_=(IS_PC?LG('Maintiens X · faire sortir le joueur du ','Hold X · pull the player out of the '):LG('Maintiens le bouton · faire sortir le joueur du ','Hold the button · pull the player out of the '))+(ejv.k==='tank'?'tank':'4x4');
     else if(v&&d<46&&wCanEnter(hm,v))t_=(IS_PC?LG('E · monter dans le ','E · get in the '):LG('Bouton · monter dans le ','Button · get in the '))+(v.k==='tank'?'tank':'4x4');
@@ -9098,7 +9150,7 @@ const WVIS=(()=>{
     if(hm.ejp>0){const w=130;pill(W/2-w/2,H*.62,w,6,3,'rgba(255,255,255,.18)');pill(W/2-w/2,H*.62,w*Math.min(1,hm.ejp),6,3,'#ff8a5a');txt(hm.ejV&&String(hm.ejV)[0]==='p'?LG('Tu fais descendre l’équipage…','Pulling the crew out…'):LG('On fait sortir le joueur…','Pulling the player out…'),W/2,H*.62-12,11,'rgba(255,255,255,.8)',null,600)}
     if(t_&&!(hm.c4p>0)&&!(hm.ejp>0)){g.font='700 12px system-ui';const w=g.measureText(t_).width+20;pill(px-w/2,py-46,w,22,11,'rgba(8,12,22,.8)');txt(t_,px,py-35,12,'#fff',null,700)}
     if(hm.c4p>0){const w=130;pill(W/2-w/2,H*.62,w,6,3,'rgba(255,255,255,.18)');pill(W/2-w/2,H*.62,w*Math.min(1,hm.c4p),6,3,'#ffb03a');txt(LG('Pose du C4','Planting C4'),W/2,H*.62-12,11,'rgba(255,255,255,.8)',null,600)}}
-   else{const v=WV[hm.wv];if(v)seatPanel(hm,v)}}
+   else{const v=WV[hm.wv];if(v){seatPanel(hm,v);if(v.k==='tank'&&hm.ws===1&&!v.st)tankAim(hm,v)}}}
   // missiles en vol : cercle sur le missile ; alerte sur le vehicule vise s'il est a nous
   for(const m of WSt.ms){const tq=m.tq>=0?WSt.tg[m.tq]:null,tv=tq?null:WV[m.tv],mine=(tq||tv)&&(tq||tv).team===mt,[x,y]=wscr(m.x,m.y,m.z||100),col=mine?'#ff4a2a':'#ffd23a';
    if(onS(x,y)){const p=.5+.5*Math.sin(now/80);g.lineWidth=2;g.strokeStyle=col;g.beginPath();g.arc(x,y,14+p*4,0,7);g.stroke()}else if(mine&&hm.alive)edge(x,y,col,'MISSILE',[]);
@@ -9124,6 +9176,70 @@ const WVIS=(()=>{
   pill(x,y,pw,ph,12,'rgba(8,12,22,.84)');g.lineWidth=1.2;g.strokeStyle=hexA('#ffd23a',.7);g.beginPath();g.roundRect?g.roundRect(x+.6,y+.6,pw-1.2,ph-1.2,12):g.rect(x,y,pw,ph);g.stroke();
   txt(LG('LANCE-MISSILES','MISSILE LAUNCHER'),x+14,y+15,12,'#ffd23a','left',800);txt(IS_PC?LG('Clic : tirer · E : quitter','Click: fire · E: exit'):LG('Visez · Tir : lancer','Aim · Fire: launch'),x+pw-14,y+15,11,'rgba(255,255,255,.6)','right',600);
   txt(lk?(wIsTg(lk)?(lk.k==='A'?LG('Antenne ennemie','Enemy radar'):LG('Lance-missiles ennemi','Enemy launcher'))+LG(' → 2 cases de dégâts',' → 2 damage'):(lk.k==='tank'?LG('Tank ennemi → immobilisé 8 s','Enemy tank → disabled 8 s'):LG('4x4 ennemi → dégâts d’un obus','Enemy 4x4 → shell damage'))):LG('Aucune cible','No target'),x+14,y+35,12,'#fff','left',700)}
+ // viseur du canon : point d'impact de l'obus (il passe au-dessus du decor), nom de ce qui sera touche, etat du canon
+ function tankAim(hm,v){const R=wShotEnd(v,v.ta,1),tg=R.k==='A'||R.k==='B',[x,y]=wscr(R.x,R.y,tg?40:22),[mx_,my_]=wMuzzle(v),[ax,ay]=wscr(mx_,my_,44),now=performance.now(),rd=!(v.cd>0)&&!(v.imm>T);
+  const col=tg||R.k==='J'?'#ffd23a':(R.k?'#ffb08a':'rgba(255,255,255,.8)');
+  g.save();g.setLineDash([5,7]);g.lineWidth=1.6;g.strokeStyle='rgba(255,255,255,.32)';g.beginPath();g.moveTo(ax,ay);g.lineTo(x,y);g.stroke();g.restore();
+  const r=(R.k?19:13)+(tg&&rd?Math.sin(now/130)*2:0);g.lineWidth=2.4;g.strokeStyle=col;g.beginPath();g.arc(x,y,r,0,7);g.stroke();
+  for(let k=0;k<4;k++){const a=k*Math.PI/2;g.beginPath();g.moveTo(x+Math.cos(a)*(r-6),y+Math.sin(a)*(r-6));g.lineTo(x+Math.cos(a)*(r+8),y+Math.sin(a)*(r+8));g.stroke()}
+  g.fillStyle=col;g.beginPath();g.arc(x,y,2.2,0,7);g.fill();
+  // ou la tourelle va (elle tourne lentement vers la visee)
+  {const df=Math.atan2(Math.sin(aimAng-v.ta),Math.cos(aimAng-v.ta));if(Math.abs(df)>.06){const[qx,qy]=wscr(mx_+Math.cos(aimAng)*Math.min(R.d,360),my_+Math.sin(aimAng)*Math.min(R.d,360),22);g.lineWidth=1.5;g.strokeStyle='rgba(255,255,255,.45)';g.beginPath();g.arc(qx,qy,7,0,7);g.stroke()}}
+  const ik=tg?R.k:(R.k==='T'?'T':(R.k==='J'||R.k==='W'?'J':'')),
+   nm=R.k==='A'?LG('ANTENNE ','RADAR ')+tgName(R.o):R.k==='B'?LG('LANCE-MISSILES ','LAUNCHER ')+tgName(R.o):R.k==='J'?LG('4x4 ENNEMI','ENEMY 4x4'):R.k==='T'?LG('TANK ENNEMI','ENEMY TANK'):R.k==='W'?LG('ÉPAVE','WRECK'):R.k==='S'?LG('SOLDAT ENNEMI','ENEMY SOLDIER'):LG('RIEN EN VUE · portée max','NOTHING · max range'),
+   sub=!rd?(v.imm>T?LG('immobilisé ','disabled ')+Math.ceil(v.imm-T)+' s':LG('rechargement ','reloading ')+Math.ceil(v.cd)+' s'):(tg?LG('vie ','health ')+R.o.hp+'/'+W_TGHP+LG(' · 1 case par obus',' · 1 per shell'):R.k==='J'?LG('2 dégâts par obus','2 damage per shell'):R.k==='T'?LG('blindé : touche le tireur','armored: hits the gunner'):LG('prêt','ready'));
+  g.font='800 12px system-ui';const w=Math.max(g.measureText(nm).width,(g.font='700 10.5px system-ui',g.measureText(sub).width))+(ik?40:22),h=34,x0=Math.max(6,Math.min(W-w-6,x-w/2)),y0=y-r-12-h;
+  pill(x0,y0,w,h,10,'rgba(8,12,22,.86)');frameR(x0,y0,w,h,10,hexA(col,.85),1.4);if(ik)ico(ik,x0+16,y0+h/2,17,col);
+  txt(nm,x0+(ik?32:11),y0+12,12,col,'left',800);txt(sub,x0+(ik?32:11),y0+25,10.5,rd?'rgba(255,255,255,.7)':'#ffb03a','left',700)}
+ // ----- carte de tir du lance-missiles : toute la carte, avec les antennes, lance-missiles, tanks et 4x4 ennemis (meme non reperes) -----
+ // toucher une cible : missile guide sur elle ; toucher ailleurs : point de tir (a confirmer avec « TIRER ICI »)
+ let MSR=null,MSC=null;
+ const msOpen=hm=>!!(hm&&hm.alive&&hm.wl>=0&&st.s==='live'&&wMsReady(hm.team)&&!(MSQ.t&&performance.now()-MSQ.t<1500));
+ function msSend(c){MSQ.seq++;MSQ.c=c;if(c!=='x')MSQ.t=performance.now();try{uiClick()}catch(e){}}
+ function msMap(hm,mt){MSR=null;if(!msOpen(hm)){MSC=null;return}tcol(mt);const now=performance.now(),D=wDeco(),q0=WSt.tg[hm.wl];if(!q0)return;
+  g.fillStyle='rgba(4,8,14,.92)';g.fillRect(0,0,W,H);
+  const hd=50,ft=34,pad=10,aw=W-2*pad,ah=H-hd-ft-2*pad,s=Math.min(aw/WW,ah/WH),mw=WW*s,mh=WH*s,ox=(W-mw)/2,oy=hd+pad+(ah-mh)/2;
+  const P=(x,y)=>FLIP?[ox+(WW-x)*s,oy+(WH-y)*s]:[ox+x*s,oy+y*s],U=(sx,sy)=>FLIP?[WW-(sx-ox)/s,WH-(sy-oy)/s]:[(sx-ox)/s,(sy-oy)/s];
+  g.save();if(FLIP){g.translate(ox+mw/2,oy+mh/2);g.rotate(Math.PI);g.translate(-(ox+mw/2),-(oy+mh/2))}g.globalAlpha=.92;try{g.drawImage(miniMap,ox,oy,mw,mh)}catch(e){}g.globalAlpha=1;g.restore();
+  g.lineWidth=1.5;g.strokeStyle='rgba(255,210,58,.55)';g.strokeRect(ox,oy,mw,mh);
+  // ponts detruits, barrieres
+  (D.bridges||[]).forEach((b,i)=>{const S=WSt.br[i];if(!S||!S.st)return;const[x,y]=P(b.x,b.y);g.strokeStyle='#ff5a3a';g.lineWidth=2;g.beginPath();g.moveTo(x-6,y-6);g.lineTo(x+6,y+6);g.moveTo(x+6,y-6);g.lineTo(x-6,y+6);g.stroke()});
+  if(typeof wBars==='function')for(const b of wBars()){g.fillStyle='rgba(200,196,180,.75)';for(const q of b.R){const[x1,y1]=P(q.x,q.y),[x2,y2]=P(q.x+q.w,q.y+q.h);g.fillRect(Math.min(x1,x2),Math.min(y1,y2),Math.max(1.5,Math.abs(x2-x1)),Math.max(1.5,Math.abs(y2-y1)))}}
+  const C=[],ic=Math.max(13,Math.min(20,mw/70));
+  WSt.tg.forEach((q,i)=>{const[x,y]=P(q.x+q.w/2,q.y+q.h/2),own=q.team===mt,dd=!!q.dead,col=dd?'rgba(150,150,150,.7)':(own?ALLYC:ENEMC),hw=Math.max(9,q.w*s/2+3),hh=Math.max(9,q.h*s/2+3);
+   g.globalAlpha=own?.75:1;g.fillStyle=dd?'rgba(30,30,30,.8)':hexA(col,.3);g.fillRect(x-hw,y-hh,hw*2,hh*2);g.lineWidth=1.6;g.strokeStyle=col;g.strokeRect(x-hw,y-hh,hw*2,hh*2);ico(q.k,x,y,ic,dd?'rgba(255,255,255,.4)':'#fff');
+   txt(tgName(q),x,y+hh+9,11,dd?'rgba(255,255,255,.45)':col,null,900);g.globalAlpha=1;
+   if(!own&&!dd){C.push({x,y,r:Math.max(24,Math.max(hw,hh)+8),c:'t'+i,k:q.k,nm:(q.k==='A'?LG('ANTENNE ','RADAR '):LG('LANCE-MISSILES ','LAUNCHER '))+tgName(q),fx:LG('2 cases de dégâts','2 damage'),hp:q.hp})}});
+  for(const v of WV){if(v.x===undefined||v.st)continue;const[x,y]=P(v.x,v.y),own=v.team===mt,col=own?ALLYC:ENEMC,Pv=WP(v);
+   g.save();g.translate(x,y);g.rotate(v.a+(FLIP?Math.PI:0));g.globalAlpha=own?.7:1;g.fillStyle=col;const lw=Math.max(10,Pv.len*s),ww=Math.max(6,Pv.wid*s);g.fillRect(-lw/2,-ww/2,lw,ww);g.lineWidth=1.4;g.strokeStyle=own?'#fff':'#200';g.strokeRect(-lw/2,-ww/2,lw,ww);g.restore();g.globalAlpha=1;
+   if(!own)C.push({x,y,r:24,c:'v'+v.i,k:v.k==='tank'?'T':'J',nm:v.k==='tank'?LG('TANK ENNEMI','ENEMY TANK'):LG('4x4 ENNEMI','ENEMY 4x4'),fx:v.k==='tank'?LG('immobilisé 8 s','disabled 8 s'):LG('gros dégâts','heavy damage')})}
+  for(const m of WSt.ms){const[x,y]=P(m.x,m.y);g.fillStyle=m.team===mt?'#ffd23a':'#ff5a3a';g.beginPath();g.arc(x,y,4,0,7);g.fill()}
+  // notre lance-missiles
+  const[lx,ly]=P(q0.x+q0.w/2,q0.y+q0.h/2);g.lineWidth=2;g.strokeStyle='#7dff9a';g.beginPath();g.arc(lx,ly,16+Math.sin(now/200)*3,0,7);g.stroke();txt(LG('VOUS','YOU'),lx,ly-26,10.5,'#7dff9a',null,900);
+  // survol (souris) : la cible sous le curseur
+  let hov=null;if(mouseMode){let bd=1e9;for(const c of C){const d=Math.hypot(c.x-mouseXY.x,c.y-mouseXY.y);if(d<c.r+6&&d<bd){bd=d;hov=c}}}
+  for(const c of C){const on=c===hov,r=c.r+(on?Math.sin(now/110)*2:0),k=r*.4;g.lineWidth=on?3:1.8;g.strokeStyle=on?'#ffd23a':hexA(ENEMC,.95);g.beginPath();
+   for(const[sx,sy]of[[-1,-1],[1,-1],[1,1],[-1,1]]){g.moveTo(c.x+sx*r,c.y+sy*(r-k));g.lineTo(c.x+sx*r,c.y+sy*r);g.lineTo(c.x+sx*(r-k),c.y+sy*r)}g.stroke();
+   if(c.k==='T'||c.k==='J')txt(c.k==='T'?'TANK':'4x4',c.x,c.y+c.r+9,10.5,on?'#ffd23a':ENEMC,null,900)}
+  const tgt=hov||null;if(tgt||MSC){const[tx,ty]=tgt?[tgt.x,tgt.y]:P(MSC.x,MSC.y);g.save();g.setLineDash([7,6]);g.lineWidth=2;g.strokeStyle='rgba(255,210,58,.85)';g.beginPath();g.moveTo(lx,ly);g.quadraticCurveTo((lx+tx)/2,Math.min(ly,ty)-60,tx,ty);g.stroke();g.restore()}
+  // point de tir choisi (a confirmer)
+  let conf=null;if(MSC){const[x,y]=P(MSC.x,MSC.y);g.lineWidth=2.4;g.strokeStyle='#ffd23a';g.beginPath();g.arc(x,y,14,0,7);g.moveTo(x-22,y);g.lineTo(x+22,y);g.moveTo(x,y-22);g.lineTo(x,y+22);g.stroke();
+   g.font='900 13px system-ui';const t_=LG('TIRER ICI','FIRE HERE'),w=g.measureText(t_).width+30,bx=Math.max(6,Math.min(W-w-6,x-w/2)),by=y+22>oy+mh-34?y-58:y+24;pill(bx,by,w,32,10,'#c8361e');frameR(bx,by,w,32,10,'#ffd23a',1.6);txt(t_,bx+w/2,by+16.5,13,'#fff',null,900);conf=[bx,by,w,32]}
+  // en-tete et fermeture
+  const hw_=W-2*pad-(W>520?150:136);pill(pad,8,hw_,hd-12,12,'rgba(8,12,22,.92)');frameR(pad,8,hw_,hd-12,12,hexA('#ffd23a',.7),1.4);ico('B',pad+20,8+(hd-12)/2,18,'#ffd23a');
+  const tl=LG('LANCE-MISSILES ','MISSILE LAUNCHER ')+tgName(q0);txt(tl,pad+36,8+(hd-12)/2-6,13,'#ffd23a','left',900);
+  txt(tgt?tgt.nm+' → '+tgt.fx+(tgt.hp?LG(' (vie ',' (health ')+tgt.hp+'/'+W_TGHP+')':''):(IS_PC?LG('Cliquez sur une cible ennemie (ou un point de la carte)','Click an enemy target (or a point on the map)'):LG('Touchez une cible ennemie (ou un point de la carte)','Tap an enemy target (or a point on the map)')),pad+36,8+(hd-12)/2+8,W<700?9.5:11,tgt?'#fff':'rgba(255,255,255,.72)','left',700);
+  g.font='900 12px system-ui';const ct='✕ '+(IS_PC?LG('FERMER (E)','CLOSE (E)'):LG('FERMER','CLOSE')),cw=g.measureText(ct).width+22,cx_=pad+hw_-cw-6,cy_=12;pill(cx_,cy_,cw,hd-20,9,'rgba(255,255,255,.14)');frameR(cx_,cy_,cw,hd-20,9,'rgba(255,255,255,.35)',1);txt(ct,cx_+cw/2,cy_+(hd-20)/2+.5,12,'#fff',null,900);
+  txt(LG('Antenne ou lance-missiles : 2 cases · tank : immobilisé 8 s · 4x4 : gros dégâts · point : dégâts autour','Radar or launcher: 2 damage · tank: disabled 8 s · 4x4: heavy damage · point: area damage'),W/2,H-ft/2-4,10.5,'rgba(255,255,255,.6)',null,600);
+  MSR={C,close:[cx_,cy_,cw,hd-20],conf,U,ox,oy,mw,mh}}
+ function msClick(ev){if(!MSR)return false;const x=ev.clientX,y=ev.clientY,R=MSR,inR=r=>!!r&&x>=r[0]&&x<=r[0]+r[2]&&y>=r[1]&&y<=r[1]+r[3];
+  try{ev.preventDefault();ev.stopPropagation()}catch(e){}
+  if(inR(R.close)){msSend('x');MSC=null;return true}
+  if(R.conf&&MSC&&inR(R.conf)){msSend('p'+Math.round(MSC.x)+','+Math.round(MSC.y));banner(LG('Missile lancé !','Missile away!'),'#ffd23a',1800);MSC=null;return true}
+  let best=null,bd=1e9;for(const c of R.C){const d=Math.hypot(c.x-x,c.y-y);if(d<c.r+6&&d<bd){bd=d;best=c}}
+  if(best){msSend(best.c);MSC=null;return true}
+  if(x>=R.ox&&x<=R.ox+R.mw&&y>=R.oy&&y<=R.oy+R.mh){const[wx,wy]=R.U(x,y);if(MSC&&Math.hypot(wx-MSC.x,wy-MSC.y)*R.mw/WW<26){msSend('p'+Math.round(MSC.x)+','+Math.round(MSC.y));banner(LG('Missile lancé !','Missile away!'),'#ffd23a',1800);MSC=null}else MSC={x:wx,y:wy}}
+  return true}
  // panneau du vehicule : place, rechargement du canon, etat du 4x4, aide
  function seatPanel(hm,v){const tk=v.k==='tank',pw=Math.min(W-30,320),ph=tk?52:70,x=W/2-pw/2,y=(typeof athTop!=='undefined'&&athTop>0?athTop:H-90)-ph-12;
   pill(x,y,pw,ph,12,'rgba(8,12,22,.84)');frameR(x,y,pw,ph,12,hexA(ALLYC,.6),1.2);
@@ -9136,9 +9252,9 @@ const WVIS=(()=>{
    row(yy,dry?LG('À sec !','Empty!'):LG('Essence ','Fuel ')+Math.ceil(v.fu??W_FMAX)+' s',dry?'#ff8a7a':(lo?(bl?'#ffc070':'rgba(255,192,112,.7)'):null));pill(bx,yy,bw,7,3.5,'rgba(255,255,255,.15)');if(f>0)pill(bx,yy,Math.max(4,bw*f),7,3.5,col)}}
  // puce sous le score : vos cibles (a defendre) contre les cibles ennemies (a detruire) ; etat de votre missile et de votre antenne
  function chip(cx,y,mt,maxW){tcol(mt);const mine=WSt.tg.filter(q=>q.team===mt),en=WSt.tg.filter(q=>q.team!==mt),kd=en.filter(q=>q.dead).length;
-  const tw=28,th=28,gp=4,mid=26,gw=n=>Math.max(0,n*(tw+gp)-gp),W1=gw(mine.length),W2=gw(en.length),tot=W1+W2+mid,k=Math.min(H<500?.78:1,maxW/(tot+8));
+  const tw=36,th=28,gp=4,mid=26,gw=n=>Math.max(0,n*(tw+gp)-gp),W1=gw(mine.length),W2=gw(en.length),tot=W1+W2+mid,k=Math.min(H<500?.78:1,maxW/(tot+8));
   g.save();g.translate(cx,y);g.scale(k,k);
-  const tile=(q,x,col)=>{const d=!!q.dead;pill(x,0,tw,th,7,d?'rgba(34,36,40,.86)':'rgba(8,12,22,.86)');frameR(x,0,tw,th,7,d?'rgba(255,255,255,.18)':hexA(col,.85),1.4);ico(q.k,x+tw/2,11,15,d?'rgba(255,255,255,.3)':col);
+  const tile=(q,x,col)=>{const d=!!q.dead;pill(x,0,tw,th,7,d?'rgba(34,36,40,.86)':'rgba(8,12,22,.86)');frameR(x,0,tw,th,7,d?'rgba(255,255,255,.18)':hexA(col,.85),1.4);ico(q.k,x+12,11,15,d?'rgba(255,255,255,.3)':col);txt(String(q.n),x+27,11.5,11,d?'rgba(255,255,255,.35)':col,null,900);
    if(d){g.strokeStyle=hexA(col,.9);g.lineWidth=2.4;g.beginPath();g.moveTo(x+8,5);g.lineTo(x+tw-8,th-8);g.moveTo(x+tw-8,5);g.lineTo(x+8,th-8);g.stroke()}
    else{const sw=(tw-8-(W_TGHP-1))/W_TGHP;for(let i=0;i<W_TGHP;i++){g.fillStyle=i<q.hp?col:'rgba(255,255,255,.14)';g.fillRect(x+4+i*(sw+1),th-6,sw,3)}}};
   const x1=-tot/2,x2=x1+W1+mid;mine.forEach((q,i)=>tile(q,x1+i*(tw+gp),ALLYC));en.forEach((q,i)=>tile(q,x2+i*(tw+gp),ENEMC));
@@ -9185,14 +9301,14 @@ const WVIS=(()=>{
   (D.bridges||[]).forEach((b,i)=>{const S=WSt.br[i];if(!S)return;if(S.st){g.fillStyle='#3d6f8a';g.fillRect(b.x0+40,b.y0,b.x1-b.x0-80,b.y1-b.y0);g.strokeStyle='#ff5a3a';g.lineWidth=2.4/MM;g.beginPath();g.moveTo(b.x-40,b.y-40);g.lineTo(b.x+40,b.y+40);g.moveTo(b.x+40,b.y-40);g.lineTo(b.x-40,b.y+40);g.stroke()}
    else if(S.c4>0){g.globalAlpha=S.f>0?.5+.5*Math.abs(Math.sin(now/150)):.8;g.strokeStyle='#ffb03a';g.lineWidth=2.4/MM;g.strokeRect(b.x0,b.y0-10,b.x1-b.x0,b.y1-b.y0+20);g.globalAlpha=1}});
   if(typeof wBars==='function')for(const b of wBars()){g.fillStyle='rgba(200,196,180,.9)';for(const q of b.R)g.fillRect(q.x,q.y,q.w,q.h);const own=b.g===spawnGroup(mt);g.fillStyle=own?'#7dff9a':'#ff6a5a';for(const G_ of b.gates)g.fillRect(G_.r.x,G_.r.y,G_.r.w,G_.r.h)}
-  for(const q of WSt.tg){const col=q.dead?'#555':(q.team?'#d07a2c':'#3d8fe8');g.fillStyle=col;g.fillRect(q.x-14,q.y-14,q.w+28,q.h+28);g.lineWidth=1.4/MM;g.strokeStyle='#111';g.strokeRect(q.x-14,q.y-14,q.w+28,q.h+28);g.save();g.translate(q.x+q.w/2,q.y+q.h/2);if(FLIP)g.rotate(Math.PI);g.scale(1/MM,1/MM);ico(q.k,0,0,MMW>150?13:10,q.dead?'rgba(255,255,255,.5)':'#fff');g.restore()}
+  for(const q of WSt.tg){const col=q.dead?'#555':(q.team?'#d07a2c':'#3d8fe8');g.fillStyle=col;g.fillRect(q.x-14,q.y-14,q.w+28,q.h+28);g.lineWidth=1.4/MM;g.strokeStyle='#111';g.strokeRect(q.x-14,q.y-14,q.w+28,q.h+28);g.save();g.translate(q.x+q.w/2,q.y+q.h/2);if(FLIP)g.rotate(Math.PI);g.scale(1/MM,1/MM);ico(q.k,0,0,MMW>150?13:10,q.dead?'rgba(255,255,255,.5)':'#fff');g.restore();lab(tgName(q),q.x+q.w/2+(q.w/2+14+(MMW>150?13:11)/MM)*(FLIP?-1:1),q.y+q.h/2,MMW>150?10:8.5,q.dead?'rgba(255,255,255,.55)':'#fff')}
   for(const c of WSt.c4){if(c.q===undefined)continue;const tq=WSt.tg[c.q];if(!tq||tq.dead)continue;g.globalAlpha=.45+.55*Math.abs(Math.sin(now/150));g.strokeStyle=tq.team===mt?'#ff4a2a':'#ffd23a';g.lineWidth=3/MM;g.strokeRect(tq.x-44,tq.y-44,tq.w+88,tq.h+88);g.globalAlpha=1}
   for(const v of WV){if(v.x===undefined||!wSolid(v)||!wSpotted(v,mt))continue;const P=WP(v),col=v.st?'#333':(v.team===mt&&v.k==='jeep'&&v.fu<=0?'#8a8a7a':(v.team?'#d07a2c':'#3d8fe8'));g.save();g.translate(v.x,v.y);g.rotate(v.a);g.fillStyle=col;g.fillRect(-P.len/2-10,-P.wid/2-10,P.len+20,P.wid+20);g.lineWidth=1.6/MM;g.strokeStyle=v.team===mt?'#fff':'#200';g.strokeRect(-P.len/2-10,-P.wid/2-10,P.len+20,P.wid+20);if(v.k==='tank'){g.rotate(v.ta-v.a);g.fillStyle='#111';g.fillRect(0,-8,P.len*.8,16)}g.restore()}
   for(const m of WSt.ms){const tt=m.tq>=0?WSt.tg[m.tq]:WV[m.tv],col=tt&&tt.team===mt?'#ff4a2a':'#ffd23a';g.strokeStyle=col;g.lineWidth=7/MM;g.beginPath();g.moveTo(m.x,m.y);g.lineTo(m.x-Math.cos(m.h)*140,m.y-Math.sin(m.h)*140);g.stroke();g.fillStyle=col;g.beginPath();g.arc(m.x,m.y,30,0,7);g.fill()}
   for(const t of[0,1]){const r=(WSt.rv[t]||0)-T;if(!(r>0))continue;const q=WSt.tg.find(q=>q.team===t&&q.k==='A');const col=t===mt?'#7dff9a':'#ff5a3a';
    if(q){const k=((W_REV-r)%1.25)/1.25;g.globalAlpha=1-k;g.strokeStyle=col;g.lineWidth=5/MM;g.beginPath();g.arc(q.x+q.w/2,q.y+q.h/2,80+k*1600,0,7);g.stroke();g.globalAlpha=1}
    if(t===mt)for(const f of E){if(!f.alive||f.team===mt)continue;g.strokeStyle='#ff4a2a';g.lineWidth=4/MM;g.beginPath();g.arc(f.x,f.y,70+30*Math.abs(Math.sin(now/160)),0,7);g.stroke()}}}
- return{sync,fx,hud,chip,intro,result,mini,camK:()=>ck,hide:()=>{if(G)G.visible=false},mf:(x,y)=>{if(HEADLESS)return;init();glow(x,67,y,30,.06,0xffe2a0)},snd:engines}})();
+ return{sync,fx,hud,chip,intro,result,mini,msMap,msClick,camK:()=>ck,hide:()=>{if(G)G.visible=false},mf:(x,y)=>{if(HEADLESS)return;init();glow(x,67,y,30,.06,0xffe2a0)},snd:engines}})();
 function wFx(q){WVIS.fx(q)}
 // mitrailleuse lourde du 4x4 : detonation grave et puissante, claquement supersonique, culasse mecanique, roulement d'echo, douilles qui tintent
 let WMG_N=0;
@@ -9315,6 +9431,7 @@ if(hm&&hm.alive&&!hm.moto&&hm.sco!==1&&Object.values(P).some(p=>!p.l&&!p.pend)){
  if(AIMT&&AIMT.alive){const[tx,ty]=wscr(AIMT.x,AIMT.y,22),r_=19+Math.sin(performance.now()/90)*2;g.lineWidth=2.5;g.strokeStyle='#ff5a46';g.beginPath();g.arc(tx,ty,r_,0,7);g.stroke();
   for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;g.beginPath();g.moveTo(tx+Math.cos(a)*(r_-6),ty+Math.sin(a)*(r_-6));g.lineTo(tx+Math.cos(a)*(r_+7),ty+Math.sin(a)*(r_+7));g.stroke()}}}
 for(const id in P){const p=P[id];if(p.pend)continue;g.strokeStyle=!p.l&&AIMT?'#ff8a70':'#aaa';g.lineWidth=2;g.beginPath();g.arc(p.x0,p.y0,50,0,7);g.stroke();const dx=p.x-p.x0,dy=p.y-p.y0,h=Math.hypot(dx,dy)||1,k=Math.min(h,50)/h;g.fillStyle='#fff6';g.beginPath();g.arc(p.x0+dx*k,p.y0+dy*k,20,0,7);g.fill()}
+if(WARM())WVIS.msMap(hm,mt);
 const me=E.find(e=>e.id===localSlot)||E[0];const nearM=!!(MB.length&&!me.moto&&motoNear(me,MOTO_R)),nearZ=!!(ZIPS().length&&((me.zl||me.zyv>0)||(me.alive&&zipNear(me)))),nearS=!!(SC.length&&!me.sco&&me.alive&&scoNear(me));const wab=WARM()?wActLabel(me):'';stySet(ab,'display',(me.alive&&st.s==='live'&&((!IS_PC&&wab)||me.can||(!IS_PC&&(me.moto||me.sco||nearM||nearZ||nearS))))?'block':'none');const vS=nearS?scoNear(me):null,abt=wab?wab:me.zl||me.zyv>0?'LÂCHER':me.moto||me.sco?'DESCENDRE':me.can===3?'PIRATER':me.can===4?'LANCER':me.can===5?'MALLETTE':(nearM?'LIGHT CYCLE':nearS?'CAMIONNETTE':nearZ?'TYROLIENNE':(me.can==1?'POSER':'DÉSAMORCER'));if(ab.textContent!==TR(abt))ab.textContent=TR(abt)}
 // fond du menu : simple decor de la carte (camera qui tourne lentement), sans partie en cours : pas de personnages, pas de tirs, pas de son
 const menuOpen=()=>!!(menu&&menu.classList&&!menu.classList.contains('hidden'));let MBGa=0;
